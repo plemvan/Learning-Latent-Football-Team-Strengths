@@ -1,0 +1,3 @@
+Lignes 2281 et 1520 sont full NaN
+
+Bcp NaN dans lignes 2607

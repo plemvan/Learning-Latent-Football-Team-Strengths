@@ -43,6 +43,24 @@ class Datacleaner:
 
         return self
     
+    
+    def drop_rows(self, row_idxs : list[int]):
+
+        """
+        Drops rows containing only NaN
+
+        Parameters
+        ----------
+
+        row_idxs : List[int]
+            List of row indexes
+        """
+
+        self.df = self.df.drop(index=row_idxs)
+
+        return self
+
+    
 
     def fillNA(self, column: str, value : Union[str, int, float]):
 
@@ -67,8 +85,6 @@ class Datacleaner:
             raise TypeError(f"Impossible to fill '{column}' with {value} : {e}")
 
         return self
-
-    
 
 
 
