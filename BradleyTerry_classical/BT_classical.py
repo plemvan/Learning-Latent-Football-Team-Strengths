@@ -4,7 +4,7 @@
 import numpy as np
 from functools import partial
 from scipy.special import expit
-from Gradient_descent import GradientDescent
+from .Gradient_descent import GradientDescent
 
 
 #===================================================#
@@ -13,14 +13,15 @@ class BradleyTerry():
 
     """Class implementing the classical Bradley-Terry framework"""
 
-    def __init__(self,learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
+    def __init__(self,learning_rate : float = 0.001, n_iterations : int = 1000, tolerance : float = 1e-6):
         
         """
         Bradley-Terry model
 
         Parameters
         ----------
-        learning_rate : float. Default = 0.01
+
+        learning_rate : float. Default = 0.001
             Step of the gradient descent
         n_iterations : int. Default = 1000
             Number of iterations of the algorithm
@@ -34,17 +35,20 @@ class BradleyTerry():
         self.n_iterations = n_iterations
         self.tolerance = tolerance
 
+        # Attributes
+        self.X : np.array = None # Matrix of results
+        self.theta : np.array = None # Vector of strengths
+
         return
     
-    def loglikelihood(self, X : np.array, theta : np.array)-> float:
+
+    def loglikelihood(self, theta : np.array)-> float:
 
         """
-        Compute and return the log-likelihood of the model for a matrix of results X and a vector of strengths theta
+        Compute and return the log-likelihood of the model for a vector of strengths theta and the matrix of results X
 
         Parameters
         ----------
-        X : np.array
-            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
         theta : np.array
             Vector of strengths
 
@@ -54,7 +58,7 @@ class BradleyTerry():
             Value of the log-likelihood for the given X and theta
         """
 
-        X = np.asarray(X)
+        X = self.X
         theta = np.asarray(theta)
 
         n = len(theta)
@@ -70,15 +74,13 @@ class BradleyTerry():
         return loglik
 
 
-    def log_gradient(self, X: np.array, theta: np.array)-> np.array:
+    def log_gradient(self, theta: np.array)-> np.array:
 
         """
-        Compute and return the gradient of the log-likelihood of the model for a matrix of results X and a vector of strenghts theta
+        Compute and return the gradient of the log-likelihood of the model for a vector of strenghts theta and the matrix of results X
 
         Parameters
         ----------
-        X : np.array
-            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
         theta : np.array
             Vector of strengths
         
@@ -88,7 +90,7 @@ class BradleyTerry():
             Value of the gradient of the log-likelihood for the given X and theta
         """
 
-        X = np.asarray(X)
+        X = self.X
         theta = np.asarray(theta)
 
         n = len(theta)
@@ -112,26 +114,6 @@ class BradleyTerry():
         return grad
 
 
-    def add_gradient(self, X: np.array):
-
-        """
-        Add the function theta -> log_gradient(X, theta) to the attributes of the class
-
-        Parameters
-        ----------
-        X : np.array
-            Matrix of results, for i<j, Xij = 1 if i wins, 0 if j wins. Whatever for other i,j
-        
-        Returns
-        -------
-        Add an attribute to the instance of BradleyTerry
-        """
-
-        self.gradient: callable = partial(self.log_gradient, X=X)
-
-        return
-
-
     def fit(self, X : np.array) -> BradleyTerry:
 
         """
@@ -140,13 +122,15 @@ class BradleyTerry():
         Parameters
         ----------
         X : np.array
-            Matrix of results, for i<j, Xij = 1 if i wins, 0 if j wins. Whatever for other i,j
+            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
+
         Returns
         -------
         self : object
         """
 
         self.theta = np.zeros(X.shape[0])
+        self.X = X
 
         self.add_gradient(X=X)
 
@@ -155,10 +139,13 @@ class BradleyTerry():
                                     n_iterations=self.n_iterations,
                                     tolerance=self.tolerance)
         
-        self.theta = Optimizer.optimize(gradient=self.gradient,
+        self.theta = Optimizer.optimize(gradient=self.log_gradient,
                                         starting_point= self.theta)
+        
+        self.theta -= np.mean(self.theta)
 
         return self
+    
     
     def predict(self) -> np.array:
 
