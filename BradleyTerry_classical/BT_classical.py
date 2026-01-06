@@ -3,6 +3,7 @@
 ## Imports
 import numpy as np
 from functools import partial
+from scipy.special import expit
 from Gradient_descent import GradientDescent
 
 
@@ -35,7 +36,7 @@ class BradleyTerry():
 
         return
     
-    def loglikelihood(self,X : np.array, theta : np.array)-> float:
+    def loglikelihood(self, X : np.array, theta : np.array)-> float:
 
         """
         Compute and return the log-likelihood of the model for a matrix of results X and a vector of strengths theta
@@ -43,13 +44,13 @@ class BradleyTerry():
         Parameters
         ----------
         X : np.array
-            Matrix of results, for i<j, Xij = 1 if i wins, 0 if j wins. Whatever for other i,j
+            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
         theta : np.array
             Vector of strengths
 
         Returns
         -------
-        loglik : float.
+        loglik : float
             Value of the log-likelihood for the given X and theta
         """
 
@@ -58,21 +59,18 @@ class BradleyTerry():
 
         n = len(theta)
 
-        # Building of theta_i - theta_j for all i<j
-        theta_diff = theta[:,None] - theta[None,:]
+        loglik = 0.0
 
-        # Mask for the upper triangular matrix i<j
-        mask = np.triu(np.ones((n,n), dtype=bool), k=1)
-
-        td = theta_diff[mask]
-        Xij = X[mask]
-
-        loglik = np.sum(Xij * td - np.log1p(np.exp(td)))
+        for i in range(n):
+            for j in range(i+1, n):
+                diff = theta[i] - theta[j]
+                loglik += X[i,j]*diff
+                loglik -= (X[i,j] + X[j,i])*np.log1p(np.exp(diff))
 
         return loglik
 
 
-    def log_gradient(self,X: np.array, theta: np.array)-> np.array:
+    def log_gradient(self, X: np.array, theta: np.array)-> np.array:
 
         """
         Compute and return the gradient of the log-likelihood of the model for a matrix of results X and a vector of strenghts theta
@@ -80,7 +78,7 @@ class BradleyTerry():
         Parameters
         ----------
         X : np.array
-            Matrix of results, for i<j, Xij = 1 if i wins, 0 if j wins. Whatever for other i,j
+            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
         theta : np.array
             Vector of strengths
         
@@ -95,33 +93,26 @@ class BradleyTerry():
 
         n = len(theta)
 
-        # Building of theta_i - theta_j for all i<j
-        theta_diff = theta[:,None] - theta[None,:]
+        grad = np.zeros(n, dtype=float)
 
-        # Building p_ij = sigmoid(theta_i - theta_j)
-        p = 1 / (1+ np.exp(-theta_diff))
+        for k in range(n):
+            for j in range(n):
+                if j==k:
+                    continue
 
-        # Mask for the upper triangular matrix i<j
-        mask = np.triu(np.ones((n,n), dtype=bool), k=1)
+                diff = theta[k] - theta[j]
 
-        Xij = X[mask]
-        pij = p[mask]
+                # Computing sigmoïd via scipy.special.expit (more stability)
+                p = expit(diff)
 
-        grad = np.zeros(n)
-        
-        # Splitting contribution given the position of the index
-        i_idx, j_idx = np.where(mask)
+                Nkj = X[k,j] + X[j,k]
 
-        grad_i_contrib = Xij - pij
-        grad_j_contrib = -grad_i_contrib
-
-        np.add.at(grad, i_idx, grad_i_contrib)
-        np.add.at(grad, j_idx, grad_j_contrib)
+                grad[k] += X[k,j] - Nkj*p
 
         return grad
 
 
-    def add_gradient(self,X: np.array):
+    def add_gradient(self, X: np.array):
 
         """
         Add the function theta -> log_gradient(X, theta) to the attributes of the class
@@ -141,7 +132,7 @@ class BradleyTerry():
         return
 
 
-    def fit(self,X : np.array) -> BradleyTerry:
+    def fit(self, X : np.array) -> BradleyTerry:
 
         """
         Fit the model to the data
