@@ -1,109 +1,88 @@
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
-import time
-import random
+import numpy as np
 
-# ================= Configuration ================= #
-# Ligue 1 ID on SoFIFA is 16. (Premier League=13, La Liga=53, etc.)
-LEAGUE_ID = 16 
+# 1. Chargement
+df = pd.read_csv("Data/ligue1_2010_2025.csv")
 
-# We want seasons 2010-2011 up to 2023-2024
-START_YEAR = 2010
-END_YEAR = 2023 
+# 2. Préparation des colonnes intermédiaires
+# On a besoin des Buts Marqués (Scored) et Encaissés (Conceded) pour chaque match
+df['HomePts'] = df.apply(lambda x: 3 if x['FTR'] == 'H' else (1 if x['FTR'] == 'D' else 0), axis=1)
+df['AwayPts'] = df.apply(lambda x: 3 if x['FTR'] == 'A' else (1 if x['FTR'] == 'D' else 0), axis=1)
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-# ================================================= #
+# Pour l'équipe à Domicile : Scored = FTHG, Conceded = FTAG
+df_home = df[['Season', 'HomeTeam', 'HomePts', 'FTHG', 'FTAG']].rename(
+    columns={'HomeTeam': 'Team', 'HomePts': 'Points', 'FTHG': 'Goals_Scored', 'FTAG': 'Goals_Conceded'}
+)
+df_home['IsHome'] = 1 # Pour calculer le biais domicile plus tard
 
-def get_roster_id(season_start_year):
-    """
-    Calculates the SoFIFA Roster ID based on the season.
-    Example: Season 2010-2011 uses FIFA 11 data -> ID 110001
-    Example: Season 2022-2023 uses FIFA 23 data -> ID 230001
-    """
-    fifa_version = season_start_year - 2000 + 1
-    # Format is usually YY0001 for the initial database (August/September update)
-    return f"{fifa_version}0001"
+# Pour l'équipe à l'Extérieur : Scored = FTAG, Conceded = FTHG (inverse !)
+df_away = df[['Season', 'AwayTeam', 'AwayPts', 'FTAG', 'FTHG']].rename(
+    columns={'AwayTeam': 'Team', 'AwayPts': 'Points', 'FTAG': 'Goals_Scored', 'FTHG': 'Goals_Conceded'}
+)
+df_away['IsHome'] = 0
 
-def scrape_sofifa_season(year):
-    roster_id = get_roster_id(year)
-    url = f"https://sofifa.com/teams?lg={LEAGUE_ID}&r={roster_id}&set=true"
-    
-    print(f"Scraping FIFA ratings for Season {year}-{year+1} (Roster {roster_id})...")
-    
-    try:
-        response = requests.get(url, headers=HEADERS)
-        if response.status_code != 200:
-            print(f"Failed to retrieve {url} (Status: {response.status_code})")
-            return []
+# Fusion
+df_all = pd.concat([df_home, df_away], ignore_index=True)
 
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # SoFIFA uses a standard table structure
-        table = soup.find('table')
-        if not table:
-            print(f"No table found for {year}")
-            return []
-            
-        tbody = table.find('tbody')
-        rows = tbody.find_all('tr')
-        
-        season_data = []
-        
-        for row in rows:
-            # Find team name (inside .col-name-wide or just the link text)
-            name_col = row.find('td', class_='col-name-wide')
-            if not name_col:
-                name_col = row.find('td', class_='col-name') # Fallback
-            
-            if name_col:
-                team_name = name_col.find('a').text.strip()
-            else:
-                continue
+# 3. Agrégation par Saison/Équipe
+# On somme les points et les buts, et on compte le nombre de matchs
+df_stats = df_all.groupby(['Season', 'Team'], as_index=False).agg({
+    'Points': 'sum',
+    'Goals_Scored': 'sum',
+    'Goals_Conceded': 'sum',
+    'IsHome': 'count' # Nombre de matchs joués
+})
+df_stats = df_stats.rename(columns={'IsHome': 'Games_Played'})
 
-            # Extract Ratings. These usually have specific classes:
-            # col-oa (Overall), col-at (Attack), col-md (Midfield), col-df (Defense)
-            try:
-                # Cleaning: sometimes they have extra spans, just get text
-                ova = row.find('td', class_='col-oa').text.strip()
-                att = row.find('td', class_='col-at').text.strip()
-                mid = row.find('td', class_='col-md').text.strip()
-                defense = row.find('td', class_='col-df').text.strip()
-            except AttributeError:
-                # If a column is missing (rare), skip or set to NaN
-                continue
+# Calcul séparé pour les points à Domicile uniquement (pour le biais)
+home_points = df_all[df_all['IsHome'] == 1].groupby(['Season', 'Team'])['Points'].sum().reset_index()
+home_points = home_points.rename(columns={'Points': 'Home_Points_Total'})
 
-            season_data.append({
-                'Season_Start_Year': year,
-                'Team': team_name,
-                'FIFA_Overall': int(ova),
-                'FIFA_Attack': int(att),
-                'FIFA_Midfield': int(mid),
-                'FIFA_Defense': int(defense)
-            })
-            
-        return season_data
+# Fusion des points domicile dans la table principale
+df_stats = pd.merge(df_stats, home_points, on=['Season', 'Team'], how='left').fillna(0)
 
-    except Exception as e:
-        print(f"Error for {year}: {e}")
-        return []
+# =========================================================
+# 4. CRÉATION DES VARIABLES AVANCÉES (FEATURE ENGINEERING)
+# =========================================================
 
-# ================= Main Execution ================= #
-all_ratings = []
+# A. Moyennes classiques
+df_stats['Avg_Goals_Scored'] = df_stats['Goals_Scored'] / df_stats['Games_Played']
+df_stats['Avg_Goals_Conceded'] = df_stats['Goals_Conceded'] / df_stats['Games_Played']
+df_stats['Goal_Difference'] = df_stats['Goals_Scored'] - df_stats['Goals_Conceded']
 
-for year in range(START_YEAR, END_YEAR + 1):
-    data = scrape_sofifa_season(year)
-    all_ratings.extend(data)
-    
-    # Polite delay
-    time.sleep(random.uniform(1, 3))
+# B. Pythagorean Expectation (Formule : G^2 / (G^2 + GA^2))
+# C'est un excellent proxy de la "vraie" force, souvent meilleur que les points
+df_stats['Pythagorean_Exp'] = (df_stats['Goals_Scored']**2) / (
+    (df_stats['Goals_Scored']**2) + (df_stats['Goals_Conceded']**2)
+)
 
-# Save
-df_fifa = pd.DataFrame(all_ratings)
-filename = "ligue1_fifa_ratings_2010_2023.csv"
-df_fifa.to_csv(filename, index=False)
+# C. Home/Away Bias (Dépendance au domicile)
+# Quelle part des points a été prise à la maison ?
+# Si > 0.7, l'équipe voyage très mal.
+df_stats['Home_Dependency'] = df_stats['Home_Points_Total'] / df_stats['Points']
+# Sécurité division par zéro
+df_stats['Home_Dependency'] = df_stats['Home_Dependency'].fillna(0.5) 
 
-print(f"Success! Scraped {len(df_fifa)} team ratings.")
-print(df_fifa.head())
+# D. Classement et Force (comme avant)
+df_stats = df_stats.sort_values(by=['Season', 'Points'], ascending=[True, False])
+df_stats['Rank'] = df_stats.groupby('Season')['Points'].rank(method='first', ascending=False).astype(int)
+df_stats['Strength_Rank_Based'] = 1 - (df_stats['Rank'] / 21)
+
+# =========================================================
+# 5. RÉSULTAT FINAL
+# =========================================================
+# On garde les colonnes utiles pour le modèle
+final_cols = [
+    'Season', 'Team', 
+    'Rank', 'Points', 
+    'Strength_Rank_Based',   # Variable 1 : Basée sur le rang
+    'Pythagorean_Exp',       # Variable 2 : Basée sur les buts (Qualité théorique)
+    'Avg_Goals_Scored',      # Variable 3 : Puissance offensive
+    'Avg_Goals_Conceded',    # Variable 4 : Solidité défensive
+    'Home_Dependency'        # Variable 5 : Style de l'équipe
+]
+
+df_final = df_stats[final_cols]
+
+print(df_final.head())
+df_final.to_csv("table_enrichie_saisons.csv", index=False)
