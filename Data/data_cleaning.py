@@ -92,23 +92,10 @@ class Datacleaner:
         Add a column that gives the corresponding Ligue1 season
         """
 
-        date_dt = pd.to_datetime(self.df["Date"], format='%d%m%Y', errors="coerce")
+        month = self.df["Date"].str.split('/', expand=True)[1].astype(int)
+        year = self.df["Date"].str.split('/', expand=True)[2].astype(int)
 
-        def _season_from_date(date):
-            """Inner function to convert date to season"""
-
-            if pd.isna(date):
-                return None
-            
-            year = date.year
-            month = date.month
-
-            if month >=7: # July or later -> new season
-                return f"{year}-{year+1}"
-            else: # June or earlier -> end of previous season
-                return f"{year-1}-{year}"
-        
-        self.df["Season"] = date_dt.apply(_season_from_date)
+        self.df["Season"] = year.where(month >= 7, year - 1).astype(str) + '-' + (year.where(month >= 7, year - 1) + 1).astype(str)
 
         return self
     
