@@ -13,7 +13,7 @@ class BradleyTerry():
 
     """Class implementing the classical Bradley-Terry framework"""
 
-    def __init__(self,learning_rate : float = 0.001, n_iterations : int = 1000, tolerance : float = 1e-6):
+    def __init__(self,learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
         
         """
         Bradley-Terry model
@@ -21,7 +21,7 @@ class BradleyTerry():
         Parameters
         ----------
 
-        learning_rate : float. Default = 0.001
+        learning_rate : float. Default = 0.01
             Step of the gradient descent
         n_iterations : int. Default = 1000
             Number of iterations of the algorithm
@@ -38,6 +38,9 @@ class BradleyTerry():
         # Attributes
         self.X : np.array = None # Matrix of results
         self.theta : np.array = None # Vector of strengths
+
+        self.teams = None
+        self.teams_index : dict = None
 
         return
     
@@ -77,7 +80,8 @@ class BradleyTerry():
     def log_gradient(self, theta: np.array)-> np.array:
 
         """
-        Compute and return the gradient of the log-likelihood of the model for a vector of strenghts theta and the matrix of results X
+        Compute and return the -(gradient of the log-likelihood) of the model for a vector of strenghts theta and the matrix of results X
+        (We compute -gradient instead of +gradient to conduct a gradient descent and not a gradient ascent)
 
         Parameters
         ----------
@@ -109,12 +113,12 @@ class BradleyTerry():
 
                 Nkj = X[k,j] + X[j,k]
 
-                grad[k] += X[k,j] - Nkj*p
+                grad[k] -= X[k,j] - Nkj*p # Substract to get -gradient 
 
         return grad
 
 
-    def fit(self, X : np.array) -> BradleyTerry:
+    def fit(self, X : np.array, teams : list) -> BradleyTerry:
 
         """
         Fit the model to the data
@@ -132,7 +136,9 @@ class BradleyTerry():
         self.theta = np.zeros(X.shape[0])
         self.X = X
 
-        self.add_gradient(X=X)
+        self.teams = teams
+        self.teams_index = {team:i for i, team in enumerate(teams)}
+
 
         # Gradient descent
         Optimizer = GradientDescent(learning_rate=self.learning_rate,
@@ -157,6 +163,6 @@ class BradleyTerry():
         theta : np.array
             Array of strengths
         """
-
+        
         return self.theta
 
