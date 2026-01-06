@@ -9,36 +9,36 @@ Date = Match Date (dd/mm/yy)
 Time = Time of match kick off
 HomeTeam = Home Team
 AwayTeam = Away Team
-FTHG and HG = Full Time Home Team Goals
-FTAG and AG = Full Time Away Team Goals
-FTR and Res = Full Time Result (H=Home Win, D=Draw, A=Away Win)
+FTHG and HG = Full Time Home Team Goals   (We don't have HG)
+FTAG and AG = Full Time Away Team Goals   (We don't have AG)
+FTR and Res = Full Time Result (H=Home Win, D=Draw, A=Away Win)   (We don't have Res)
 HTHG = Half Time Home Team Goals
 HTAG = Half Time Away Team Goals
 HTR = Half Time Result (H=Home Win, D=Draw, A=Away Win)
 
 Match Statistics (where available)
-Attendance = Crowd Attendance
-Referee = Match Referee
+Attendance = Crowd Attendance   (We don't have it)
+Referee = Match Referee   (We don't have it)
 HS = Home Team Shots
 AS = Away Team Shots
 HST = Home Team Shots on Target
 AST = Away Team Shots on Target
-HHW = Home Team Hit Woodwork
-AHW = Away Team Hit Woodwork
+HHW = Home Team Hit Woodwork   (We don't have it)
+AHW = Away Team Hit Woodwork   (We don't have it)
 HC = Home Team Corners
 AC = Away Team Corners
 HF = Home Team Fouls Committed
 AF = Away Team Fouls Committed
-HFKC = Home Team Free Kicks Conceded
-AFKC = Away Team Free Kicks Conceded
-HO = Home Team Offsides
-AO = Away Team Offsides
+HFKC = Home Team Free Kicks Conceded   (We don't have it)
+AFKC = Away Team Free Kicks Conceded   (We don't have it)
+HO = Home Team Offsides   (We don't have it)
+AO = Away Team Offsides   (We don't have it)
 HY = Home Team Yellow Cards
 AY = Away Team Yellow Cards
 HR = Home Team Red Cards
 AR = Away Team Red Cards
-HBP = Home Team Bookings Points (10 = yellow, 25 = red)
-ABP = Away Team Bookings Points (10 = yellow, 25 = red)
+HBP = Home Team Bookings Points (10 = yellow, 25 = red)   (We don't have it)
+ABP = Away Team Bookings Points (10 = yellow, 25 = red)   (We don't have it)
 
 Note that Free Kicks Conceeded includes fouls, offsides and any other offense commmitted and will always be equal to or higher than the number of fouls. Fouls make up the vast majority of Free Kicks Conceded. Free Kicks Conceded are shown when specific data on Fouls are not available (France 2nd, Belgium 1st and Greece 1st divisions).
 
