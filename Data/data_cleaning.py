@@ -3,7 +3,7 @@
 ## Imports
 import numpy as np
 import pandas as pd
-from typing import Union
+from typing import Union, Literal
 
 #======================================================#
 
@@ -87,6 +87,31 @@ class Datacleaner:
         return self
 
 
+    def add_season(self):
+        """
+        Add a column that gives the corresponding Ligue1 season
+        """
+
+        date_dt = pd.to_datetime(self.df["Date"], format='%d%m%Y', errors="coerce")
+
+        def _season_from_date(date):
+            """Inner function to convert date to season"""
+
+            if pd.isna(date):
+                return None
+            
+            year = date.year
+            month = date.month
+
+            if month >=7: # July or later -> new season
+                return f"{year}-{year+1}"
+            else: # June or earlier -> end of previous season
+                return f"{year-1}-{year}"
+        
+        self.df["Season"] = date_dt.apply(_season_from_date)
+
+        return self
+    
 
     def save_data(self, output_path : str, returns : bool = False):
 
