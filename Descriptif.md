@@ -1,12 +1,13 @@
-# Plan de Projet : Neural Bradley-Terry Rating appliqué à la Ligue 1
+# Plan du projet : From Bradley-Terry to Neural Bradley-Terry
 
 
 ## 🎯 Objectifs du projet
 
 
-1. **Implémentation** : Implémenter et comparer le modèle de Bradley-Terry classique avec sa version neuronale (NBTR)
+1. **Implémentation** : Implémenter le modèle de Bradley-Terry classique et le modèle de Bradley-Terry neuronal (NBTR)
 
-2. **Evaluation** : Evaluer les deux approches (évaluation de modèles prédisant des outputs non observables)
+
+2. **Évaluation** : Évaluer et comparer les performances des deux modèles (probabilités de victoire, forces latentes, généralisation à de nouveaux matchs, généralisation à de nouvelles équipes)
 
 3. **Application** : Démontrer la capacité de généralisation du NBTR sur de nouvelles équipes en s'intéressant aux équipes promues
 
@@ -33,151 +34,96 @@
 - Nombre de cartons jaunes/rouges
 - Nombre de corners
 
-**Ce qui manque :**
-- ❌ Features "externes" sur les équipes (budget, valeur marchande, effectif)
-- ❌ Autres données pour l'application aux équipes promues de L2
+**Statistiques d'équipes :**
+- Valeur de l'effectif
+- Average buts concédés
+- Average buts marqués
+- "Force" sur une saison
 
 ---
 
 ## 🗺️ Structure du projet
 
-### PHASE 1 : Implémentation et Comparaison des deux modèles
+### PHASE 1 : Implémentation des deux modèles
 
-**Objectif :** Implémenter les deux approches et les comparer rigoureusement
+**Objectif :** Implémenter les deux modèles
 
 #### 1.1 Modèle Bradley-Terry Classique
 - [x] Implémentation de base (`BT_classical.py`) ✅
-- [ ] Application aux données Ligue 1
-- [ ] Calcul des ratings par équipe
-- [ ] Évaluation des performances
+- [ ] Extension de Davidson pour gérer les matchs nuls (paramètre $\nu$ : propension aux égalités)
 
 **Méthode :**
 - MLE via gradient descent
 - Input : matrice de résultats entre équipes
-- Output : vecteur de ratings $θ_i$ pour chaque équipe connue
+- Output : vecteur de ratings $\theta_i$ pour chaque équipe connue
 
-#### 1.2 Feature Engineering
-- Création de features dérivées des statistiques de matchs
+**⚠️ Important :** Considérer $\nu$ comme un hyperparamètre du modèle, on ne l'estime pas durant l'apprentissage. (Par contre on peut l'estimer avant pour le fixer à une valeur pas déconnante)
+- Si on l'estime durant l'apprentissage des modèles, on aura un estimateur supplémentaire mais qu'on ne pourra pas interpréter avec les $\theta_i$ estimés.
+- Donc autant le fixer à l'avance comme un hyper paramètre, et on expliquera dans le rapport qu'on l'a fixé parce que c'est pas une quantité qui nous intéresse pour l'évaluation mais juste un paramètre qui rend le modèle plus proche de la réalité.
 
- ET/OU 
 
-- Récupération d'un autre jeu de données pour avoir des infos sur les équipes (budget, effectif, etc...)
+#### 1.2 NBTR 
 
-#### 1.3 NBTR - Implémentation
-
-**Architecture du Rating Estimator E :**
 ```python
-# A définir
+# À compléter
 ```
 
-
-#### 1.4 Protocole de Comparaison / Évaluation
-
-**Split des données :**
-- Train : saisons 2010-2011 à 2020-2021 (11 saisons)
-- Validation : saisons 2021-2022 et 2022-2023 (2 saisons)
-- Test : saisons 2023-2024 et 2024-2025 (2 saisons)
-
-**Métriques d'évaluation :**
-
-| Métrique | Description | Formule/Méthode |
-|----------|-------------|-----------------|
-| **Accuracy** | % prédictions correctes du vainqueur | (correct / total) × 100 |
-| **Log-likelihood (?)** | Qualité probabiliste | Σ log P(résultat observé) |
-| **Spearman correlation (?)** | Corrélation des rankings | Corrélation entre classement prédit et réel |
-| **Brier Score (?)** | Calibration des probabilités | Moyenne de (p_prédit - y_réel)² |
-
-**Analyses à produire :**
-- [ ] Courbes de learning (train/val loss)
-- [ ] Comparaison quantitative des métriques
-- [ ] Visualisation des ratings appris (scatter plot BT vs NBTR)
-- [ ] Analyse des erreurs : quels matchs sont mal prédits ?
+**⚠️ Important :** Également considérer $\nu$ comme un hyperparamètre du modèle.
 
 ---
 
-### PHASE 2 : Application - Généralisation à de Nouvelles Équipes
+### PHASE 2 : Comparaison des performances des deux modèles (généralisation à de nouveaux matchs avec les mêmes équipes)
+
+#### 2.1 Protocole d'évaluation / comparaison
+
+**Objectif :** Comparer les modèles sur ce qu'ils savent tous deux faire
+
+Les deux modèles ont la capacité d'apprendre les forces des équipes puis de prédire le résultat de nouveaux matchs entre ces mêmes équipes.
+
+Les modèles nous renvoient $\hat\theta = \left( \hat\theta_i \right)_1^n$. A partir de cela, on dispose de deux quantités :
+- Les probabilités de victoires estimées $\hat p_{ij}$ (liées aux matchs)
+- Les forces latentes estimées $\hat\theta_i$ (liées aux équipes)
+
+**Split des données :**
+
+Comme le modèle de Bradley-Terry classique ne pas généraliser à de nouvelles équipes, le plus simple est d'utiliser une seule saison pour l'évaluation, et de faire un split des matchs (on peut répéter l'opération avec plusieurs saisons si on veut).
+- Train : 27 premières (ou 24 si 18 équipes) journées du championnat. On entraine et on finetune/valide NBTR sur ces données, puis on réentraine NBTR et BT sur ces données pour estimer les forces $\hat\theta_i$.
+- Test : 11 dernières (ou 10 si 18 équipes) journées du championnat. On compare les probas de victoire $\hat p_{ij}$ estimées avec les résultats des matchs.
+
+**Métriques :**
+
+Vu qu'on dispose des forces estimées et des probabilités de victoires estimées, on évalue les modèles sur deux niveaux distincts :
+- **Niveau MATCH (proba de victoires) :** Prédiction des résultats des derniers matchs de la saison
+
+    | Métrique | Description | Formule/Méthode |
+    |----------|-------------|-----------------|
+    |**log Loss**|Comparaison des log Loss des 2 modèles |Σ log P(résultat observé) sur le test|
+    ||||
+
+
+- **Niveau ÉQUIPE (forces latentes) :** Cohérence des forces latentes avec les résultats observés
+
+    | Métrique | Description | Formule/Méthode |
+    |----------|-------------|-----------------|
+    |**Corrélation forces/winrates**|Comparaison forces estimées et winrates (pour chaque modèle) |Corrélation de Spearman|
+    |**Corrélation forces BT/forces NBTR**|Comparaison des estimations des deux modèles|Corrélation de Spearman|
+
+- **(Optionnel) Stabilité/Robustesse :** Étude de la variance sur plusieurs runs des modèles.
+    
+    On garde les mêmes données de test et on lance les tests des modèles plusieurs fois avec différentes seeds aléatoires et on regarde la variance des forces estimées et la variance de la log Loss pour chacun des deux modèles.
+
+
+
+---
+
+### PHASE 3 : Application - Généralisation à de nouvelles équipes
 
 **Objectif :** Démontrer la capacité de NBTR à prédire la force d'équipes absentes du training set
 
-#### Option A : Équipes Promues de Ligue 2 (IDÉAL) 🎯
+**Idée :**  Utiliser les équipes fraîchement promues de Ligue 2 
 
-**Principe :**
-- Entraîner NBTR sur équipes de Ligue 1 historiques
-- Prédire le rating des équipes promues avant leur première saison en L1
-- Comparer avec leur performance réelle
-
-**Données nécessaires :**
-Features qui existent AUSSI pour les équipes de Ligue 2 :
-- ✅ Valeur marchande de l'effectif (Transfermarkt)
-- ✅ Classement final en Ligue 2 l'année précédente
-- ✅ Palmarès (nombre de titres L1/L2)
-- ⚠️ Budget (si accessible)
-- ⚠️ Âge moyen / Nombre d'internationaux (si accessible)
-
-**Cas d'usage concrets :**
-| Saison | Équipes promues | Utilisation |
-|--------|----------------|-------------|
-| 2024-25 | Auxerre, Angers, Saint-Étienne | Test set |
-| 2023-24 | Le Havre, Metz | Test set |
-| Avant | Autres équipes promues | Validation |
-
----
-
-#### Option B : Simulation de Nouvelles Équipes
-
-**Principe :**
-- Split artificiel : retirer certaines équipes du train set
-- Entraîner NBTR sans ces équipes
-- Tester la prédiction sur les équipes retirées
-
-**Protocole :**
+```python
+# À compléter
 ```
-Split spatial :
-- Train : 80% équipes (ex: 16 équipes)
-- Test : 20% équipes (ex: 4 équipes jamais vues)
-
-Validation :
-- Répéter avec plusieurs splits aléatoires
-- Moyenner les performances
-```
-
-**Avantages :**
-- ✅ Faisable avec données actuelles
-- ✅ Pas de collecte supplémentaire
-
-**Limites :**
-- ⚠️ Moins naturel (on retire artificiellement des équipes connues)
-- ⚠️ Ne répond pas à une vraie question sportive
-
-**Analyses :**
-- [ ] Accuracy de prédiction sur équipes test
-- [ ] Corrélation ratings prédits vs ratings MLE réels
-- [ ] Influence du nombre d'équipes dans le train set
-
----
-
-## 📌 Notes et remarques
-
-### Différences clés BT classique vs NBTR
-
-| Aspect | BT Classique | NBTR |
-|--------|--------------|------|
-| **Input** | Matrice de résultats | Features + résultats |
-| **Output** | Rating par équipe connue | Fonction E : features → rating |
-| **Généralisation** | ❌ Impossible sur nouvelles équipes | ✅ Possible |
-| **Interprétation** | Rating = force latente | Rating + importance des features |
-| **Complexité** | Faible (MLE) | Élevée (NN) |
-
-### Quand NBTR apporte de la valeur ?
-
-**✅ NBTR est utile quand :**
-- On a des features informatives sur les équipes
-- On veut prédire la force d'équipes non observées
-- On veut comprendre quels facteurs expliquent la force
-
-**❌ NBTR n'apporte pas grand chose si :**
-- On veut juste ranker des équipes connues (BT classique suffit)
-- On n'a pas de features (ou seulement one-hot encoding)
-- Dataset trop petit pour entraîner un NN
 
 ---
