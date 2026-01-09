@@ -13,7 +13,7 @@ class BradleyTerry():
 
     """Class implementing the classical Bradley-Terry framework"""
 
-    def __init__(self,learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
+    def __init__(self, lambda_draw: float, learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
         
         """
         Bradley-Terry model
@@ -35,8 +35,13 @@ class BradleyTerry():
         self.n_iterations = n_iterations
         self.tolerance = tolerance
 
+        # Draw Hyperparameter
+        self.lambda_draw = lambda_draw
+
         # Attributes
-        self.X : np.array = None # Matrix of results
+        self.W : np.array = None # Matrix of victories
+        self.D : np.array = None # Matrix of draws
+
         self.theta : np.array = None # Vector of strengths
 
         self.teams = None
@@ -61,18 +66,42 @@ class BradleyTerry():
             Value of the log-likelihood for the given X and theta
         """
 
-        X = self.X
-        theta = np.asarray(theta)
+        W = self.W
+        D = self.D
+        lambda_draw = self.lambda_draw
 
+        theta = np.asarray(theta)
         n = len(theta)
 
         loglik = 0.0
 
         for i in range(n):
             for j in range(i+1, n):
-                diff = theta[i] - theta[j]
-                loglik += X[i,j]*diff
-                loglik -= (X[i,j] + X[j,i])*np.log1p(np.exp(diff))
+
+                ti = theta[i]
+                tj = theta[j]
+
+                # linear (observed) terms
+                loglik += W[i, j] * ti
+                loglik += W[j, i] * tj
+                loglik += 0.5 * D[i, j] * (ti + tj)
+                loglik += D[i, j] * lambda_draw
+
+                # total number of games
+                Nij = W[i, j] + W[j, i] + D[i, j]
+
+                # numerically stable log Z_ij
+                m = max(ti, tj)
+                logZ = (
+                    m
+                    + np.log(
+                        np.exp(ti - m)
+                        + np.exp(tj - m)
+                        + np.exp(lambda_draw) * np.exp(0.5 * (ti + tj) - m)
+                    )
+                )
+
+                loglik -= Nij * logZ   
 
         return loglik
 
@@ -94,9 +123,11 @@ class BradleyTerry():
             Value of the gradient of the log-likelihood for the given X and theta
         """
 
-        X = self.X
-        theta = np.asarray(theta)
+        W = self.W
+        D = self.D
+        lambda_draw = self.lambda_draw
 
+        theta = np.asarray(theta)
         n = len(theta)
 
         grad = np.zeros(n, dtype=float)
@@ -106,15 +137,30 @@ class BradleyTerry():
                 if j==k:
                     continue
 
-                diff = theta[k] - theta[j]
+                tk = theta[k]
+                tj = theta[j]
 
-                # Computing sigmoïd via scipy.special.expit (more stability)
-                p = expit(diff)
+                # Observed term
+                obs = W[k, j] + 0.5 * D[k, j]
 
-                Nkj = X[k,j] + X[j,k]
+                # Total number of matches
+                Nkj = W[k, j] + W[j, k] + D[k, j]
 
-                grad[k] -= X[k,j] - Nkj*p # Substract to get -gradient 
+                # ----- Stable computation of expected term -----
+                m = max(tk, tj)
 
+                exp_k = np.exp(tk - m)
+                exp_j = np.exp(tj - m)
+                exp_d = np.exp(0.5 * (tk + tj) - m)
+
+                Z = exp_k + exp_j + np.exp(lambda_draw) * exp_d
+
+                # Expected contribution of player k
+                Ek = (exp_k + 0.5 * np.exp(lambda_draw) * exp_d) / Z
+
+                # -gradient accumulation
+                grad[k] -= obs - Nkj * Ek
+                
         return grad
 
 

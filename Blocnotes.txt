@@ -1,3 +1,23 @@
 Lignes 2281 et 1520 sont full NaN
 
 Bcp NaN dans lignes 2607
+
+
+Version basique pour loglik Davidson
+# Exponentiated strengths
+                pi_i = np.exp(theta[i])
+                pi_j = np.exp(theta[j])
+                nu = np.exp(lambda_draw)
+
+                # Davidson normalizing constant
+                Zij = pi_i + pi_j + nu*np.sqrt(pi_i*pi_j)
+
+                # Linear terms
+                loglik += W[i,j]*theta[i]
+                loglik += W[j,i]*theta[j]
+                loglik += 0.5*D[i,j]*(theta[i]+ theta[j])
+                loglik += D[i,j]*np.log(Zij)
+
+                # Normalizing term
+                Nij = W[i,j] + W[j,i] + D[i,j]
+                loglik -= Nij*np.log(Zij)
