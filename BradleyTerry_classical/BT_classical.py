@@ -2,7 +2,6 @@
 
 ## Imports
 import numpy as np
-from functools import partial
 from scipy.special import expit
 from .Gradient_descent import GradientDescent
 
@@ -21,6 +20,8 @@ class BradleyTerry():
         Parameters
         ----------
 
+        lambda_draw : float
+            Draw parameter
         learning_rate : float. Default = 0.01
             Step of the gradient descent
         n_iterations : int. Default = 1000
@@ -160,27 +161,30 @@ class BradleyTerry():
 
                 # -gradient accumulation
                 grad[k] -= obs - Nkj * Ek
-                
+
         return grad
 
 
-    def fit(self, X : np.array, teams : list) -> BradleyTerry:
+    def fit(self, W : np.array, D: np.array, teams : list) -> BradleyTerry:
 
         """
         Fit the model to the data
 
         Parameters
         ----------
-        X : np.array
-            Matrix of results, for i != j, X[i,j] is the number of victory of i against j
+        W : np.array
+            Matrix of victories. W[i,j] = nb of victories of i against j for all i != j
+        D : np.array
+            Matrix of draws (symmetric). D[i,j] = nb of draws between i and j for all i != j
 
         Returns
         -------
         self : object
         """
 
-        self.theta = np.zeros(X.shape[0])
-        self.X = X
+        self.theta = np.zeros(W.shape[0])
+        self.W = W
+        self.D = D
 
         self.teams = teams
         self.teams_index = {team:i for i, team in enumerate(teams)}
@@ -199,7 +203,7 @@ class BradleyTerry():
         return self
     
     
-    def predict(self) -> np.array:
+    def predict_strength(self) -> np.array:
 
         """
         Return the strengths of each team
@@ -211,4 +215,43 @@ class BradleyTerry():
         """
         
         return self.theta
+    
+    
+    def predict_proba(self, team1: str, team2: str) -> dict:
+
+        """
+        Predict the probability of each outcome between two teams
+        
+        Parameters
+        ----------
+        team1 : str
+            Name of first team
+        team2 : str
+            Name of second team
+            
+        Returns
+        -------
+        probs : dict
+            Dictionary with keys 'team1_win', 'draw', 'team2_win'
+        """
+
+        i = self.teams_index[team1]
+        j = self.teams_index[team2]
+        
+        ti = self.theta[i]
+        tj = self.theta[j]
+        
+        # Compute probabilities
+        m = max(ti, tj)
+        exp_i = np.exp(ti - m)
+        exp_j = np.exp(tj - m)
+        exp_d = np.exp(0.5 * (ti + tj) - m)
+        
+        Z = exp_i + exp_j + np.exp(self.lambda_draw) * exp_d
+        
+        return {
+            f'{team1}_win': exp_i / Z,
+            'draw': np.exp(self.lambda_draw) * exp_d / Z,
+            f'{team2}_win': exp_j / Z
+        }
 
