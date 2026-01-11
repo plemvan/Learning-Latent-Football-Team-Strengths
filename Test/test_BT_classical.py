@@ -2,6 +2,7 @@
 
 ## Imports
 import numpy as np
+import pandas as pd
 from scipy.special import expit
 from scipy.stats import spearmanr, kendalltau
 from BradleyTerry_classical.BT_classical import BradleyTerry
@@ -324,3 +325,93 @@ class BT_classical_TEST:
         return
 
 
+
+class BT_Test:
+    """Class used for the evaluation of the model"""
+
+    def __init__(self, model : BradleyTerry, test_df : pd.DataFrame):
+
+        # Model
+        self.model = model
+
+        self.lambda_draw = self.model.lambda_draw
+
+        self.W_matrix = self.model.W
+        self.D_matrix = self.model.D
+        self.teams = self.model.teams
+
+        self.teams_index = self.model.teams_index
+
+        # Parameters
+        self.learning_rate = self.model.learning_rate
+        self.n_iterations = self.model.n_iterations
+        self.tolerance = self.model.tolerance
+
+        # Outputs
+        self.theta = self.model.theta
+        self.loglik_opt = self.model.loglikelihood(self.theta)
+        self.grad_opt = self.model.log_gradient(self.theta)
+
+        # Test data
+        self.test_df = test_df
+        
+        return
+    
+
+    def logLoss(self):
+
+        """Compute the logLoss on test data"""
+
+        logloss = 0.0
+
+        for _, row in self.test_df.iterrows():
+
+            team1 = row['HomeTeam']
+            team2 = row['AwayTeam']
+            result = row['FTR']  # 'H', 'D', 'A'
+
+            probas = self.model.predict_proba(team1, team2)
+
+            if result == 'H':
+                logloss += -np.log(probas[f'{team1}_win'] + 1e-15)
+            elif result == 'D':
+                logloss += -np.log(probas['draw'] + 1e-15)
+            elif result == 'A':
+                logloss += -np.log(probas[f'{team2}_win'] + 1e-15)
+            
+        logloss /= len(self.test_df)
+
+        print(f"LogLoss on test data: {logloss:.4f}")
+        return logloss
+    
+
+    def baseline_logloss(self):
+
+        """Compute the logLoss for a baseline model (uniform probabilities)"""
+
+        logloss = 0.0
+
+        for _, row in self.test_df.iterrows():
+
+            team1 = row['HomeTeam']
+            team2 = row['AwayTeam']
+            result = row['FTR']  # 'H', 'D', 'A'
+
+            # Uniform probabilities
+            probas = {
+                f'{team1}_win': 1/3,
+                'draw': 1/3,
+                f'{team2}_win': 1/3
+            }
+
+            if result == 'H':
+                logloss += -np.log(probas[f'{team1}_win'] + 1e-15)
+            elif result == 'D':
+                logloss += -np.log(probas['draw'] + 1e-15)
+            elif result == 'A':
+                logloss += -np.log(probas[f'{team2}_win'] + 1e-15)
+
+        logloss /= len(self.test_df)
+
+        print(f"LogLoss on test data (baseline): {logloss:.4f}")
+        return logloss
