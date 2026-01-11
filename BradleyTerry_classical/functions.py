@@ -1,11 +1,12 @@
-#========== Calibrate HyperParameters for BT Classical ==========#
+#========== Functions for BT Classical ==========#
 
 ## Imports
 import numpy as np
 import matplotlib.pyplot as plt
 from .BT_classical import BradleyTerry
 
-#================================================================#
+#================================================#
+
 
 class BT_calibrate:
     """Class to calibrate BT classical"""
@@ -44,7 +45,7 @@ class BT_calibrate:
 
             bt_model = BradleyTerry(lambda_draw=lambda_draw,
                                     learning_rate=0.01,
-                                    n_iterations=1000)
+                                    n_iterations=1500)
             
             bt_model.fit(W = self.W, D=self.D, teams=self.teams)
             
@@ -59,7 +60,7 @@ class BT_calibrate:
         plt.annotate(f'({lambda_opt:.2f}, {max(logliks):.2f})', xy=(lambda_opt, max(logliks)), xytext=(lambda_opt - 0.5, max(logliks) + 0.1), ha='center')
         plt.xlabel("lambda")
         plt.ylabel("Log-likelihood")
-        plt.title("Profile likelihood for lambda")
+        plt.title("Profile Log-likelihood for lambda")
         plt.grid()
         plt.show()
 

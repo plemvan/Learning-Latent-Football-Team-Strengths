@@ -200,6 +200,8 @@ class BradleyTerry():
         
         self.theta -= np.mean(self.theta)
 
+        print("Model fitted successfully !")
+
         return self
     
     
