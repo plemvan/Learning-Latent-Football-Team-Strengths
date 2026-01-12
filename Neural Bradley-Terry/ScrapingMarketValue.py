@@ -7,7 +7,7 @@ import re
 
 # ================= Configuration ================= #
 START_YEAR = 2010
-END_YEAR = 2023  # The 2023-2024 season
+END_YEAR = 2025  # The 2023-2024 season
 BASE_URL = "https://www.transfermarkt.com/ligue-1/startseite/wettbewerb/FR1/plus/?saison_id={}"
 
 # Headers are CRITICAL. Without this, Transfermarkt will block you.
@@ -111,7 +111,7 @@ for year in range(START_YEAR, END_YEAR + 1):
 df = pd.DataFrame(all_data)
 
 # Save to CSV
-filename = "ligue1_market_values_2010_2023.csv"
+filename = "ligue1_market_values_2010_2025.csv"
 df.to_csv(filename, index=False)
 print(f"Done! Saved {len(df)} rows to {filename}")
 

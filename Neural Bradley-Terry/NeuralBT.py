@@ -1,143 +1,133 @@
+import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import matplotlib.pyplot as plt
 
-# =================================================== #
-
+# ==============================================================================
+# 1. DÉFINITION DU MODÈLE (Neural Bradley-Terry)
+# ==============================================================================
 class NeuralBradleyTerry(nn.Module):
-    """
-    Class implementing the Neural Bradley-Terry framework (NBTR).
-    It learns a mapping from Team Features -> Team Strength.
-    """
-
-    def __init__(self, input_dim: int, hidden_dim: int = 32, learning_rate: float = 0.01):
-        """
-        Initialize the Neural Network architecture.
-        
-        Parameters
-        ----------
-        input_dim : int
-            Number of features per team (size of the feature vector).
-        hidden_dim : int
-            Size of the hidden layer.
-        learning_rate : float
-            Step size for the Adam optimizer.
-        """
+    def __init__(self, input_dim: int, hidden_dim: int = 16, lr: float = 0.01):
         super(NeuralBradleyTerry, self).__init__()
-        
-        # The "Score Function" f_phi(x)
-        # Takes team features, outputs a scalar "strength"
-        self.network = nn.Sequential(
+        # Architecture simple : Features -> Force
+        self.feature_extractor = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 1)  # Output is scalar (theta_i)
+            nn.Linear(hidden_dim, 1) # Sortie : 1 seul chiffre (la force)
         )
-        
-        self.learning_rate = learning_rate
-        # We use Adam, which is generally more stable for NNs than vanilla Gradient Descent
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        
-        # BCEWithLogitsLoss combines a Sigmoid layer and BCELoss in one single class
-        # This is numerically more stable than using a plain Sigmoid followed by a BCELoss.
-        # Loss = - [y * log(sigmoid(diff)) + (1-y) * log(1 - sigmoid(diff))]
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.BCEWithLogitsLoss()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass: compute strengths from features.
-        """
-        return self.network(x)
+    def forward(self, x):
+        return self.feature_extractor(x)
 
-    def fit(self, X: np.array, features: np.array, n_iterations: int = 1000) -> 'NeuralBradleyTerry':
-        """
-        Fit the neural model to the data using implicit supervision.
+    def fit(self, X_home, X_away, y, epochs=300):
+        # Conversion en Tensor
+        X_h = torch.FloatTensor(X_home)
+        X_a = torch.FloatTensor(X_away)
+        target = torch.FloatTensor(y).view(-1, 1)
         
-        Parameters
-        ----------
-        X : np.array
-            Adjacency matrix of results. X[i,j] = number of times i beat j.
-        features : np.array
-            Matrix of team features of shape (n_teams, n_features).
-            Row i contains the stats for team i.
-            
-        Returns
-        -------
-        self : object
-        """
-        # Convert data to PyTorch tensors
-        features_tensor = torch.FloatTensor(features)
+        self.train()
+        print("Début de l'entraînement...")
         
-        # 1. Pre-process X into pairs for training
-        # We convert the matrix X into a list of matches: [(winner_idx, loser_idx), ...]
-        # This is standard for training Neural Nets (batching).
-        matches = []
-        n_teams = X.shape[0]
-        
-        for i in range(n_teams):
-            for j in range(n_teams):
-                if i == j: continue
-                if X[i, j] > 0:
-                    # If i beat j, we add this pair to the training set
-                    # We can weigh this by the number of wins, or just repeat the entry
-                    count = int(X[i, j])
-                    for _ in range(count):
-                        matches.append([i, j])
-                        
-        matches_tensor = torch.LongTensor(matches) # Shape (N_matches, 2)
-        
-        # Training Loop
-        self.train() # Set mode to training
-        for epoch in range(n_iterations):
+        for epoch in range(epochs):
             self.optimizer.zero_grad()
             
-            # --- Step A: Compute Strengths for ALL teams ---
-            # theta = f_phi(features)
-            all_strengths = self.forward(features_tensor) # Shape (n_teams, 1)
+            # Calcul des forces
+            score_h = self.forward(X_h)
+            score_a = self.forward(X_a)
             
-            # --- Step B: Select strengths for the specific matches ---
-            winners_idx = matches_tensor[:, 0]
-            losers_idx = matches_tensor[:, 1]
+            # Bradley-Terry : la différence de force prédit la victoire
+            logits = score_h - score_a 
             
-            strength_winners = all_strengths[winners_idx]
-            strength_losers  = all_strengths[losers_idx]
-            
-            # --- Step C: Compute Logits (Score Difference) ---
-            # The model predicts P(i > j) based on (theta_i - theta_j)
-            logits = strength_winners - strength_losers
-            
-            # --- Step D: Calculate Loss ---
-            # The target is always 1.0 here because we constructed the list such that 
-            # the first column (i) is the winner.
-            targets = torch.ones_like(logits)
-            
-            loss = self.loss_fn(logits, targets)
-            
-            # --- Step E: Backpropagation ---
+            loss = self.loss_fn(logits, target)
             loss.backward()
             self.optimizer.step()
             
-            # Optional: Print loss every 100 iterations
-            if epoch % 100 == 0:
-                print(f"Epoch {epoch}: Loss = {loss.item():.4f}")
-
-        return self
-
-    def predict(self, features: np.array) -> np.array:
-        """
-        Return the predicted strengths for the given features.
+            if epoch % 50 == 0:
+                print(f"Epoch {epoch} | Loss: {loss.item():.4f}")
         
-        Parameters
-        ----------
-        features : np.array (n_teams, n_features)
-        
-        Returns
-        -------
-        theta : np.array
-            Array of learned strengths.
-        """
-        self.eval() # Set mode to evaluation
-        with torch.no_grad():
-            features_tensor = torch.FloatTensor(features)
-            strengths = self.forward(features_tensor)
-        return strengths.numpy().flatten()
+        print("Entraînement terminé.")
+
+# ==============================================================================
+# 2. CHARGEMENT ET PRÉPARATION DES DONNÉES
+# ==============================================================================
+# On charge le fichier final créé précédemment
+df = pd.read_csv("Data/dataset_final_training.csv")
+
+# Liste des features (Assurez-vous que ces colonnes existent dans votre CSV)
+# Note : on utilise les noms de base, on rajoutera _Home et _Away après
+feature_names = [
+    'Log_Market_Value',      # Structurel
+    'Strength_Rank_Based',   # Historique
+    'Pythagorean_Exp',       # Forme théorique
+    'Avg_Goals_Scored',      # Attaque
+    'Home_Dependency'        # Domicile
+]
+
+# Création des matrices X_home, X_away et y
+# On prend toutes les données (Train + Test mélangés pour cet exemple simple)
+X_home = df[[f"{col}_Home" for col in feature_names]].values.astype(np.float32)
+X_away = df[[f"{col}_Away" for col in feature_names]].values.astype(np.float32)
+y = df['Target'].values.astype(np.float32)
+
+# ==============================================================================
+# 3. ENTRAÎNEMENT
+# ==============================================================================
+model = NeuralBradleyTerry(input_dim=len(feature_names))
+model.fit(X_home, X_away, y, epochs=500)
+
+# ==============================================================================
+# 4. OBTENIR LES FORCES (Ce que vous demandez)
+# ==============================================================================
+
+def get_season_ranking(model, df_full, target_season, feature_cols):
+    """
+    Extrait les forces des équipes pour une saison précise.
+    """
+    # 1. On filtre pour garder une seule ligne par équipe pour cette saison
+    # On utilise les infos "Home" pour avoir les stats de l'équipe
+    unique_teams = df_full[df_full['Season'] == target_season].drop_duplicates(subset=['HomeTeam'])
+    
+    if unique_teams.empty:
+        print(f"Aucune donnée trouvée pour la saison {target_season}")
+        return None
+
+    # 2. Préparation des features de ces équipes
+    cols_home = [f"{col}_Home" for col in feature_cols]
+    X_teams = unique_teams[cols_home].values.astype(np.float32)
+    
+    # 3. Le modèle prédit la force !
+    model.eval()
+    with torch.no_grad():
+        strengths = model.forward(torch.tensor(X_teams)).numpy().flatten()
+    
+    # 4. Création du tableau de résultat
+    ranking = pd.DataFrame({
+        'Team': unique_teams['HomeTeam'],
+        'Neural_Strength': strengths
+    })
+    
+    # On trie du plus fort au plus faible
+    return ranking.sort_values(by='Neural_Strength', ascending=False)
+
+# --- EXEMPLE : CLASSEMENT POUR LA DERNIÈRE SAISON DU FICHIER ---
+last_season = df['Season'].max() # Ex: "22-23" ou "2022" selon votre format
+print(f"\n--- CLASSEMENT NEURAL POUR LA SAISON {last_season} ---")
+
+ranking = get_season_ranking(model, df, last_season, feature_names)
+
+if ranking is not None:
+    print(ranking.head(10)) # Affiche le Top 10
+
+    # Petit graphique pour votre rapport
+    plt.figure(figsize=(10, 6))
+    # On prend le top 15 pour lisibilité
+    top_15 = ranking.head(15)
+    plt.barh(top_15['Team'], top_15['Neural_Strength'], color='skyblue')
+    plt.gca().invert_yaxis() # Le 1er en haut
+    plt.xlabel("Force Latente (Apprise par le Réseau)")
+    plt.title(f"Classement IA des équipes - Saison {last_season}")
+    plt.show()
