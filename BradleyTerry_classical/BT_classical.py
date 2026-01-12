@@ -205,18 +205,22 @@ class BradleyTerry():
         return self
     
     
-    def predict_strength(self) -> np.array:
+    def predict_strength(self) -> dict:
 
         """
-        Return the strengths of each team
+        Return the strengths of each team as a dictionnary
 
         Returns
         -------
-        theta : np.array
-            Array of strengths
+        strengths : dict
+            Dictionnary with team names as keys and estimated strengths as values
+            {team_name: strength_value, ...}
         """
+
+        result = {team: float(value) for team,value in zip(self.teams, self.theta)}
         
-        return self.theta
+        return result
+    
     
     
     def predict_proba(self, team1: str, team2: str) -> dict:

@@ -45,7 +45,23 @@ class DataProcesser:
         return self
     
     
-    def split_train_test(self, test_size : int, nb_teams : int = 20):
+    def remove_year(self, year : str):
+
+        """
+        Removes a given season from the dataset
+        
+        Parameters
+        ----------
+        year : str
+            Year to remove (format 'YY-YY' or 'YYYY-YYYY')
+        """
+
+        self.df = self.df[self.df['Season']!=year]
+
+        return self
+    
+    
+    def split_train_test(self, test_size : int):
         
         """
         Split the data into training and test sets
@@ -53,11 +69,8 @@ class DataProcesser:
         Parameters
         ----------
         test_size : int
-            Number of match days to include in the test set
-        
-        nb_teams : int. Default = 20
-            Number of teams in the league (used to calculate number of matches per day)
-            
+            Number of lines to put in the test set
+                    
         Returns
         -------
         train_df : pd.DataFrame
@@ -68,13 +81,13 @@ class DataProcesser:
 
         # Create a copy of the dataframe
         df_copy = self.df.copy()
-                
-        # Calculate split index
-        split_idx = int(len(df_copy) - test_size * nb_teams /2)
-        
+
+        # Split index
+        split_idx = test_size
+
         # Split the data
-        train_df = df_copy.iloc[:split_idx].copy()
-        test_df = df_copy.iloc[split_idx:].copy()
+        train_df = df_copy.iloc[:-split_idx].copy()
+        test_df = df_copy.iloc[-split_idx:].copy()
 
         # Store the splits
         self.train_df = train_df
