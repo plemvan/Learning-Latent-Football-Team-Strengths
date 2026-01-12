@@ -114,7 +114,7 @@ def get_season_ranking(model, df_full, target_season, feature_cols):
     return ranking.sort_values(by='Neural_Strength', ascending=False)
 
 # --- EXEMPLE : CLASSEMENT POUR LA DERNIÈRE SAISON DU FICHIER ---
-last_season = df['Season'].max() # Ex: "22-23" ou "2022" selon votre format
+last_season = '2024-2025' # Ex: "22-23" ou "2022" selon votre format
 print(f"\n--- CLASSEMENT NEURAL POUR LA SAISON {last_season} ---")
 
 ranking = get_season_ranking(model, df, last_season, feature_names)
@@ -125,9 +125,9 @@ if ranking is not None:
     # Petit graphique pour votre rapport
     plt.figure(figsize=(10, 6))
     # On prend le top 15 pour lisibilité
-    top_15 = ranking.head(15)
+    top_15 = ranking.head(18)
     plt.barh(top_15['Team'], top_15['Neural_Strength'], color='skyblue')
     plt.gca().invert_yaxis() # Le 1er en haut
-    plt.xlabel("Force Latente (Apprise par le Réseau)")
-    plt.title(f"Classement IA des équipes - Saison {last_season}")
+    plt.xlabel("Latent Strength learned by NeuralBT")
+    plt.title(f"Ranking  - Season {last_season}")
     plt.show()
