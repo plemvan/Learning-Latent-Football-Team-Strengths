@@ -49,7 +49,7 @@ class BT_calibrate:
             
             bt_model.fit(W = self.W, D=self.D, teams=self.teams)
             
-            theta_hat = bt_model.predict_strength()
+            theta_hat = list(bt_model.predict_strength().values())
             loglik = bt_model.loglikelihood(theta=theta_hat)
             logliks.append(loglik)
 
