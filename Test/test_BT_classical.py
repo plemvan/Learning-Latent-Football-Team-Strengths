@@ -42,6 +42,55 @@ class BT_evaluate_strengths:
         return
     
 
+    def calculate_performance_metrics(self) -> pd.DataFrame:
+
+        """
+        Create and cache a DataFrame of performance metrics for BT and NBTR strengths
+        
+        :param self: Description
+        :return: Description
+        :rtype: DataFrame
+        """
+
+        df = self.test_df
+
+        # All teams
+        teams = pd.unique(self.test_df[['HomeTeam','AwayTeam']].values.ravel())
+        
+        # Matches played
+        games = (
+            df['HomeTeam'].value_counts()
+            .add(df['AwayTeam'].value_counts(), fill_value=0)
+        )
+
+        # Wins
+        home_wins = df[df['FTR'] == 'H']['HomeTeam'].value_counts()
+        away_wins = df[df['FTR'] == 'A']['AwayTeam'].value_counts()
+        wins = home_wins.add(away_wins, fill_value=0)
+
+        # Draws
+        home_draws = df[df['FTR'] == 'D']['HomeTeam'].value_counts()
+        away_draws = df[df['FTR'] == 'D']['AwayTeam'].value_counts()
+        draws = home_draws.add(away_draws, fill_value=0)
+
+        # Points
+        points = 3 * wins + draws
+
+        # Assemble DataFrame
+        scores_df = pd.DataFrame({
+            "Team": teams,
+            "Points": points.reindex(teams).fillna(0),
+            "WinRate": (wins / games).reindex(teams).fillna(0),
+            "WinRateAdj": ((wins + 0.5 * draws) / games).reindex(teams).fillna(0)
+        })
+
+        scores_df = scores_df.sort_values("Points", ascending=False).reset_index(drop=True)
+
+        self.performance_metrics = scores_df
+
+        return
+    
+
     def plot_strengths(self, model : Literal['BT', 'NBTR']):
         
         """
@@ -71,7 +120,6 @@ class BT_evaluate_strengths:
 
         plt.figure(figsize=(10, 6))
         plt.barh(df['Team'], strengths)
-        plt.gca().invert_yaxis()
         plt.xlabel('Teams')
         plt.ylabel('Strength')
         plt.title(title)
@@ -164,9 +212,88 @@ class BT_evaluate_strengths:
             'ci_lower': ci_lower,
             'ci_upper': ci_upper
         }
+    
+
+    def _spearman_with_bootstrap(self, x, y):
+
+        """
+        Docstring for _spearman_with_bootstrap
+        
+        :param self: Description
+        :param x: Description
+        :param y: Description
+        """
+
+        # Similar to spearman_correlation but for two arbitrary arrays
+
+        # Original correlation
+        corr, pvalue = spearmanr(x, y)
+
+        # Bootstrap for confidence intervals
+        n = len(x)
+        bootstrapped_corrs = []
+        for _ in range(self.n_bootstrap):
+            indices = np.random.choice(n, size=n, replace=True)
+            x_sample = x[indices]
+            y_sample = y[indices]
+
+            # Calculate correlation for the bootstrap sample
+            corr_boot, _ = spearmanr(x_sample, y_sample)
+            bootstrapped_corrs.append(corr_boot)
+
+            # Calculate correlation for the bootstrap sample
+            corr_boot, _ = spearmanr(x_sample, y_sample)
+            bootstrapped_corrs.append(corr_boot)
+
+        # Calculate confidence intervals
+        alpha = 1 - self.confidence_level
+        ci_lower = np.percentile(bootstrapped_corrs, 100 * (alpha / 2))
+        ci_upper = np.percentile(bootstrapped_corrs, 100 * (1 - alpha / 2))
+
+        return {
+            'correlation': corr,
+            'pvalue': pvalue,
+            'ci_lower': ci_lower,
+            'ci_upper': ci_upper
+        }
 
 
+    def results_correlation(self, model : Literal['BT', 'NBTR'], metric : Literal['points','rank', 'winrate', 'adjusted_winrate']) -> dict:
 
+        """
+        Docstring for compare_with_results
+        
+        :param self: Description
+        :param model: Description
+        :type model: Literal['BT', 'NBTR']
+        :param metric: Description
+        :type metric: Literal['points', 'rank', 'winrate', 'adjusted_winrate']
+        :return: Description
+        :rtype: dict
+        """
+
+        # Performances metrics
+        if self.performance_metrics is None:
+            self.calculate_performance_metrics()
+        perf_df = self.performance_metrics
+
+        # Merge with self.results
+        metric_name_dict = {'points' : 'Points',
+                            'rank' : 'Points',
+                            'winrate' : 'WinRate',
+                            'adjusted_winrate' : 'WinRateAdj'}
+        
+        compare_col = metric_name_dict[metric]
+
+        merged_df = self.results.merge(perf_df[['Team', compare_col]], on='Team', how='inner')
+
+        # Select strengths based on model
+        strength_col = f"{model}_strength"
+
+        # Calculate Spearman correlation
+        result = self._spearman_with_bootstrap(merged_df[strength_col], merged_df[compare_col])
+
+        return result
 
 
     def test(self):
