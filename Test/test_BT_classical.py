@@ -4,129 +4,171 @@
 import numpy as np
 import pandas as pd
 from typing import Literal
-from scipy.special import expit
-from scipy.stats import spearmanr, kendalltau
-from BradleyTerry_classical.BT_classical import BradleyTerry
-
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr, spearmanr
 
 #===============================================#
 
 
-class Comparison_Test:
-    """Class used for the evaluation of the model"""
+class BT_evaluate_strengths:
+    """Class to evaluate BT classical strengths"""
 
+    def __init__(self, BT_results : pd.DataFrame, NBTR_results : pd.DataFrame, test_df : pd.DataFrame):
+        
+        # Results
+        self.BT_results = BT_results
+        self.NBTR_results = NBTR_results
 
-    def __init__(self, test_df : pd.DataFrame, result_BT : dict, result_NBTR : dict):
+        # Will be used later to check consistency
+        # if set(self.BT_results['Team']) != set(self.NBTR_results['Team']):
+            # raise ValueError("Team index in BT_results and NBTR_results do not match.")
 
+        self.results = self.BT_results.merge(self.NBTR_results, on='Team', how='inner')
+
+        self.results = self.results.rename(columns={self.results.columns[0]: 'Team',
+                                                    self.results.columns[1]: 'BT_strength',
+                                                    self.results.columns[2]: 'NBTR_strength'})
+ 
         # Test data
         self.test_df = test_df
 
-        # Results
-        self.result_BT = result_BT
-        self.result_NBTR = result_NBTR
+        # Hyper parameters for evaluation
+        self.n_bootstrap = 1000
+        self.confidence_level = 0.95
 
-        if set(self.result_BT.keys()) == set(self.result_NBTR.keys()):
-            
-            self.teams = list(self.result_BT.keys())
+        # Performance metrics
+        self.performance_metrics : pd.DataFrame = None
 
-        else:
-            raise IndexError("Teams in each result dictionnary doesn't match")
-            
-        
         return
     
-    def compute_proba(self, model : Literal['BT','NBTR'], team1 : str, team2 : str) -> dict:
+
+    def plot_strengths(self, model : Literal['BT', 'NBTR']):
+        
+        """
+        Docstring for plot_strengths
+        
+        :param self: Description
+        :param model: Description
+        :type model: Literal['BT', 'NBTR']
+        """
+
+        if model == 'BT':
+
+            # sort by BT strengths
+            df = self.results.sort_values(by='BT_strength', ascending=True)
+            strengths = df['BT_strength']
+            title = "Bradley-Terry Strengths"
+
+        elif model == 'NBTR':
+
+            # sort by NBTR strengths
+            df = self.results.sort_values(by='NBTR_strength', ascending=True)
+            strengths = df['NBTR_strength']
+            title = "Neural Bradley-Terry Strengths"
+            
+        else:
+            raise ValueError("Model must be either 'BT' or 'NBTR'.")
+
+        plt.figure(figsize=(10, 6))
+        plt.barh(df['Team'], strengths)
+        plt.gca().invert_yaxis()
+        plt.xlabel('Teams')
+        plt.ylabel('Strength')
+        plt.title(title)
+        plt.show()
+
+        return
+
+
+    def pearson_correlation(self) -> dict:
 
         """
-        Compute the probability of each outcome between two teams
-        
-        Parameters
-        ----------
-        model : str, 'BT' or 'NBTR'
-            Which model to choose when computing probabilities
-        team1 : str
-            Name of first team
-        team2 : str
-            Name of second team
-            
+        Calculate Pearson correlation coefficient between BT and NBTR strengths
+    
         Returns
         -------
-        probs : dict
-            Dictionary with keys 'team1_win', 'draw', 'team2_win'
-        
+        result : dict
+            Dictionary containing:
+            - 'correlation': Pearson correlation coefficient
+            - 'pvalue': Two-tailed p-value for testing non-correlation
+            - 'ci_lower': Lower bound of the confidence interval
+            - 'ci_upper': Upper bound of the confidence interval
         """
 
-        # results
-        if model == 'BT':
-            results = self.result_BT
-        else:
-            results = self.result_NBTR
+        # Original correlation
+        corr, pvalue = pearsonr(self.results['BT_strength'], self.results['NBTR_strength'])
 
-        # Strength of each team
-        ti = results[team1]
-        tj = results[team2]
+        # Bootstrap for confidence intervals
+        n = len(self.results)
+        bootstrapped_corrs = []
 
-        if model == 'BT':
+        for _ in range(self.n_bootstrap):
+            indices = np.random.choice(n, size=n, replace=True)
+            sample = self.results.iloc[indices]
 
-            m = max
+            # Calculate correlation for the bootstrap sample
+            corr_boot, _ = pearsonr(sample['BT_strength'], sample['NBTR_strength'])
+            bootstrapped_corrs.append(corr_boot)
+        
+        # Calculate confidence intervals
+        alpha = 1 - self.confidence_level
+        ci_lower = np.percentile(bootstrapped_corrs, 100 * (alpha / 2))
+        ci_upper = np.percentile(bootstrapped_corrs, 100 * (1 - alpha / 2))
+
+        return {
+            'correlation': corr,
+            'pvalue': pvalue,
+            'ci_lower': ci_lower,
+            'ci_upper': ci_upper
+        }
 
 
+    def spearman_correlation(self) -> dict:
+
+        """
+        Calculate Spearman correlation coefficient between BT and NBTR strengths
     
+        Returns
+        -------
+        result : dict
+            Dictionary containing:
+            - 'correlation': Spearman rank correlation coefficient
+            - 'pvalue': Two-tailed p-value for testing non-correlation
+            - 'ci_lower': Lower bound of the confidence interval
+            - 'ci_upper': Upper bound of the confidence interval
+        """
 
-    def logLoss(self):
+        # Original correlation
+        corr, pvalue = spearmanr(self.results['BT_strength'], self.results['NBTR_strength'])
 
-        """Compute the logLoss on test data"""
+        # Bootstrap for confidence intervals
+        n = len(self.results)
+        bootstrapped_corrs = []
 
-        logloss = 0.0
+        for _ in range(self.n_bootstrap):
+            indices = np.random.choice(n, size=n, replace=True)
+            sample = self.results.iloc[indices]
 
-        for _, row in self.test_df.iterrows():
+            # Calculate correlation for the bootstrap sample
+            corr_boot, _ = spearmanr(sample['BT_strength'], sample['NBTR_strength'])
+            bootstrapped_corrs.append(corr_boot)
 
-            team1 = row['HomeTeam']
-            team2 = row['AwayTeam']
-            result = row['FTR']  # 'H', 'D', 'A'
+        # Calculate confidence intervals
+        alpha = 1 - self.confidence_level
+        ci_lower = np.percentile(bootstrapped_corrs, 100 * (alpha / 2))
+        ci_upper = np.percentile(bootstrapped_corrs, 100 * (1 - alpha / 2))
 
-            probas = self.model.predict_proba(team1, team2)
+        return {
+            'correlation': corr,
+            'pvalue': pvalue,
+            'ci_lower': ci_lower,
+            'ci_upper': ci_upper
+        }
 
-            if result == 'H':
-                logloss += -np.log(probas[f'{team1}_win'] + 1e-15)
-            elif result == 'D':
-                logloss += -np.log(probas['draw'] + 1e-15)
-            elif result == 'A':
-                logloss += -np.log(probas[f'{team2}_win'] + 1e-15)
-            
-        logloss /= len(self.test_df)
 
-        print(f"LogLoss on test data: {logloss:.4f}")
-        return logloss
-    
 
-    def baseline_logloss(self):
 
-        """Compute the logLoss for a baseline model (uniform probabilities)"""
 
-        logloss = 0.0
+    def test(self):
 
-        for _, row in self.test_df.iterrows():
-
-            team1 = row['HomeTeam']
-            team2 = row['AwayTeam']
-            result = row['FTR']  # 'H', 'D', 'A'
-
-            # Uniform probabilities
-            probas = {
-                f'{team1}_win': 1/3,
-                'draw': 1/3,
-                f'{team2}_win': 1/3
-            }
-
-            if result == 'H':
-                logloss += -np.log(probas[f'{team1}_win'] + 1e-15)
-            elif result == 'D':
-                logloss += -np.log(probas['draw'] + 1e-15)
-            elif result == 'A':
-                logloss += -np.log(probas[f'{team2}_win'] + 1e-15)
-
-        logloss /= len(self.test_df)
-
-        print(f"LogLoss on test data (baseline): {logloss:.4f}")
-        return logloss
+        return self.results
