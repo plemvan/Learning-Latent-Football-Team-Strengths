@@ -53,7 +53,7 @@ class BT_calibrate:
                                     learning_rate=0.01,
                                     n_iterations=1500)
             
-            bt_model.fit(W = self.W, D=self.D, teams=self.teams)
+            bt_model.fit(train_data=self.data)
             
             theta_hat = bt_model.predict_strength()['Strength'].tolist()
             loglik = bt_model.loglikelihood(theta=theta_hat)

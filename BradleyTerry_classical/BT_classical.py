@@ -266,4 +266,79 @@ class BradleyTerry():
             'draw': np.exp(self.lambda_draw) * exp_d / Z,
             f'{team2}_win': exp_j / Z
         }
+    
+    
+    def simulate_season(self, list_teams: list) -> pd.DataFrame:
+        
+        """
+        Simulate the results of a season using the estimated probabilities from the model.
+        
+        Parameters
+        ----------
+        list_teams : list
+            List of teams to include in the simulation
+            
+        Returns
+        -------
+        df : pd.DataFrame
+            DataFrame with columns 'HomeTeam', 'AwayTeam', 'P_Home', 'P_Draw', 'P_Away', 'Result'
+        """
+        
+        matches = []
+        
+        # Generate all unique pairs
+        for i in range(len(list_teams)):
+            for j in range(i+1, len(list_teams)):
+                team1 = list_teams[i]
+                team2 = list_teams[j]
+                
+                # Match 1: team1 home, team2 away
+                probs1 = self.predict_proba(team1, team2)
+                p_home = probs1[f'{team1}_win']
+                p_draw = probs1['draw']
+                p_away = probs1[f'{team2}_win']
+                
+                # Determine result
+                if p_home > p_draw and p_home > p_away:
+                    result = 'H'
+                elif p_draw > p_away:
+                    result = 'D'
+                else:
+                    result = 'A'
+                
+                matches.append({
+                    'HomeTeam': team1,
+                    'AwayTeam': team2,
+                    'P_Home': p_home,
+                    'P_Draw': p_draw,
+                    'P_Away': p_away,
+                    'Result': result
+                })
+                
+                # Match 2: team2 home, team1 away
+                probs2 = self.predict_proba(team2, team1)
+                p_home = probs2[f'{team2}_win']
+                p_draw = probs2['draw']
+                p_away = probs2[f'{team1}_win']
+                
+                # Determine result
+                if p_home > p_draw and p_home > p_away:
+                    result = 'H'
+                elif p_draw > p_away:
+                    result = 'D'
+                else:
+                    result = 'A'
+                
+                matches.append({
+                    'HomeTeam': team2,
+                    'AwayTeam': team1,
+                    'P_Home': p_home,
+                    'P_Draw': p_draw,
+                    'P_Away': p_away,
+                    'Result': result
+                })
+        
+        df = pd.DataFrame(matches)
+        return df
+
 
