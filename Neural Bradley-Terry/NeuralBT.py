@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+import itertools
 
 # Definition of the neural Bradley-Terry model
 
@@ -78,6 +79,54 @@ def get_season_ranking(model, df_full, target_season, feature_cols):
 def get_start_year(s):
     return int(s.split('-')[0])
 
+def predict_season_probas(model, df_full, target_season, feature_cols, draw_threshold=0.5, home_advantage=0.3):
+    """
+    Generate match outcome probabilities for all team matchups in a specific season.
+    """
+    # Strength recuperation
+    unique_teams = df_full[df_full['Season'] == target_season].drop_duplicates(subset=['HomeTeam'])
+    if unique_teams.empty: return None
+
+    cols_home = [f"{col}_Home" for col in feature_cols]
+    X_teams = unique_teams[cols_home].values.astype(np.float32)
+    
+    model.eval()
+    with torch.no_grad():
+        strengths = model.forward(torch.tensor(X_teams)).numpy().flatten()
+    
+    team_strengths = dict(zip(unique_teams['HomeTeam'], strengths))
+    
+    # Simulation
+    matches = []
+    teams_list = list(team_strengths.keys())
+    
+    for home_team, away_team in itertools.permutations(teams_list, 2):
+        s_h = team_strengths[home_team]
+        s_a = team_strengths[away_team]
+        
+        # To handle draws, we use a threshold on the difference of strengths
+        # P(Home) = P (Diff > threshold)
+        prob_home = 1 / (1 + np.exp(-(s_h - s_a + home_advantage - draw_threshold)))
+        
+        # P(Away) = P (Diff < -threshold) 
+        prob_away = 1 / (1 + np.exp(-(s_a - s_h - home_advantage - draw_threshold)))
+        
+        # P(Draw) = what is left
+        prob_draw = max(0, 1 - prob_home - prob_away)
+        
+        total = prob_home + prob_draw + prob_away
+        
+        matches.append({
+            'HomeTeam': home_team,
+            'AwayTeam': away_team,
+            'P_Home': prob_home / total,
+            'P_Draw': prob_draw / total,
+            'P_Away': prob_away / total,
+            'Strength_Diff': s_h - s_a
+        })
+        
+    return pd.DataFrame(matches)
+
 # Load processed dataset
 
 df = pd.read_csv("Data/dataset_training.csv")
@@ -136,3 +185,11 @@ if ranking is not None:
         plt.text(value, index, f"{value:.2f}", va='center', fontsize=9)
     plt.tight_layout()
     plt.show()
+
+# Simulation part 
+
+# Thresholds can be adjusted to simulate more or less draws
+df_probas = predict_season_probas(model, df, target_season, feature_names, draw_threshold=0.5, home_advantage=0.3)
+
+if df_probas is not None:
+    df_probas.to_csv(f"Predictions_{target_season}.csv", index=False)
