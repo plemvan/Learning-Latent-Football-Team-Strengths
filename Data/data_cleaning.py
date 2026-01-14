@@ -9,6 +9,7 @@ from typing import Union
 
 
 class Datacleaner:
+
     """Class for the initial cleaning of the database"""
 
     def __init__(self, filepath: str):
@@ -88,6 +89,7 @@ class Datacleaner:
 
 
     def add_season(self):
+        
         """
         Add a column that gives the corresponding Ligue1 season
         """
@@ -96,6 +98,14 @@ class Datacleaner:
         year = self.df["Date"].str.split('/', expand=True)[2].astype(int)
 
         self.df["Season"] = year.where(month >= 7, year - 1).astype(str) + '-' + (year.where(month >= 7, year - 1) + 1).astype(str)
+
+        # Format season to 'YY-YY'
+
+        def format_season(s):
+            parts = s.split('-')
+            return '-'.join([p[-2:] for p in parts])
+        
+        self.df["Season"] = self.df["Season"].apply(format_season)
 
         return self
     

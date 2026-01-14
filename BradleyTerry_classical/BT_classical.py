@@ -2,6 +2,7 @@
 
 ## Imports
 import numpy as np
+import pandas as pd
 from scipy.special import expit
 from .Gradient_descent import GradientDescent
 
@@ -54,7 +55,7 @@ class BradleyTerry():
     def loglikelihood(self, theta : np.array)-> float:
 
         """
-        Compute and return the log-likelihood of the model for a vector of strengths theta and the matrix of results X
+        Compute and return the log-likelihood of the model for a vector of strengths theta
 
         Parameters
         ----------
@@ -110,7 +111,7 @@ class BradleyTerry():
     def log_gradient(self, theta: np.array)-> np.array:
 
         """
-        Compute and return the -(gradient of the log-likelihood) of the model for a vector of strenghts theta and the matrix of results X
+        Compute and return minus the gradient of the log-likelihood of the model for a vector of strengths theta
         (We compute -gradient instead of +gradient to conduct a gradient descent and not a gradient ascent)
 
         Parameters
@@ -165,29 +166,32 @@ class BradleyTerry():
         return grad
 
 
-    def fit(self, W : np.array, D: np.array, teams : list) -> BradleyTerry:
+    def fit(self, train_data : dict) -> BradleyTerry:
 
         """
         Fit the model to the data
 
         Parameters
         ----------
-        W : np.array
-            Matrix of victories. W[i,j] = nb of victories of i against j for all i != j
-        D : np.array
-            Matrix of draws (symmetric). D[i,j] = nb of draws between i and j for all i != j
+        train_data : dict
+            Processed training data with Teams, Victory Matrix, Draw Matrix
+            {'Teams': list of team names,
+             'Victory Matrix': np.array of shape (n_teams, n_teams) with number of victories,
+             'Draw Matrix': np.array of shape (n_teams, n_teams) with number of draws}
 
         Returns
         -------
         self : object
         """
 
-        self.theta = np.zeros(W.shape[0])
-        self.W = W
-        self.D = D
+        
 
-        self.teams = teams
-        self.teams_index = {team:i for i, team in enumerate(teams)}
+        self.theta = np.zeros(train_data['Victory Matrix'].shape[0])
+        self.W = train_data['Victory Matrix']
+        self.D = train_data['Draw Matrix']
+
+        self.teams = train_data['Teams']
+        self.teams_index = {team:i for i, team in enumerate(self.teams)}
 
 
         # Gradient descent
@@ -205,20 +209,22 @@ class BradleyTerry():
         return self
     
     
-    def predict_strength(self) -> dict:
+    def predict_strength(self) -> pd.DataFrame:
 
         """
-        Return the strengths of each team as a dictionnary
+        Return the strengths of each team as a dataframe
 
         Returns
         -------
-        strengths : dict
-            Dictionnary with team names as keys and estimated strengths as values
-            {team_name: strength_value, ...}
+        strengths : pd.DataFrame
+            DataFrame with columns 'Team' and 'Strength'
         """
 
-        result = {team: float(value) for team,value in zip(self.teams, self.theta)}
-        
+        result = pd.DataFrame({
+            'Team': self.teams,
+            'Strength': [float(value) for value in self.theta]
+        })
+
         return result
     
     

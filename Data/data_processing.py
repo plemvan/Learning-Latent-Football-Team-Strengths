@@ -7,6 +7,7 @@ import pandas as pd
 #=====================================#
 
 class DataProcesser:
+
     """
     Class for processing data into a correct input for models
     """
@@ -37,7 +38,7 @@ class DataProcesser:
         Parameters
         ----------
         year : str
-            Year to filter the data on (format: "YY-YY" or "YYYY-YYYY")
+            Year to filter the data (on format 'YY-YY')
         """
 
         self.df = self.df[self.df['Season']==year]
@@ -53,7 +54,7 @@ class DataProcesser:
         Parameters
         ----------
         year : str
-            Year to remove (format 'YY-YY' or 'YYYY-YYYY')
+            Year to remove (format 'YY-YY')
         """
 
         self.df = self.df[self.df['Season']!=year]

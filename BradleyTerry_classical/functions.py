@@ -9,34 +9,40 @@ from .BT_classical import BradleyTerry
 
 
 class BT_calibrate:
+
     """Class to calibrate BT classical"""
 
-    def __init__(self, W : np.array, D : np.array, teams : list):
+    def __init__(self, train_data : dict):
 
         """
-        Docstring for __init__
-        
-        :param self: Description
-        :param W: Description
-        :type W: np.array
-        :param D: Description
-        :type D: np.array
+        Calibrate BT classical model
+
+        Parameters
+        ----------
+        train_data : dict
+            Processed training data with Teams, Victory Matrix, Draw Matrix
+            {'Teams': list of team names,
+             'Victory Matrix': np.array of shape (n_teams, n_teams) with number of victories,
+             'Draw Matrix': np.array of shape (n_teams, n_teams) with number of draws}
         """
+
+        self.data = train_data
         
-        self.W = W
-        self.D = D
-        self.teams = teams
+        self.W = self.data['Victory Matrix']
+        self.D = self.data['Draw Matrix']
+        self.teams = self.data['Teams']
 
         return
     
     def calibrate_lambda(self, lambda_grid : np.linspace):
 
         """
-        Docstring for calibrate_lambda
-        
-        :param self: Description
-        :param lambda_grid: Description
-        :type lambda_grid: np.linspace
+        Calibrate lambda via profile likelihood approach
+
+        Parameters
+        ----------
+        lambda_grid : np.linspace
+            Grid of lambda values to test
         """
 
         logliks = []
@@ -49,7 +55,7 @@ class BT_calibrate:
             
             bt_model.fit(W = self.W, D=self.D, teams=self.teams)
             
-            theta_hat = list(bt_model.predict_strength().values())
+            theta_hat = bt_model.predict_strength()['Strength'].tolist()
             loglik = bt_model.loglikelihood(theta=theta_hat)
             logliks.append(loglik)
 
