@@ -21,8 +21,26 @@ class NeuralBradleyTerry(nn.Module):
 
     def forward(self, x):
         return self.feature_extractor(x)
+    
+    def fit(self, X_home, X_away, y, epochs=500):
+        X_h = torch.FloatTensor(X_home)
+        X_a = torch.FloatTensor(X_away)
+        target = torch.FloatTensor(y).view(-1, 1)
+        dataset = torch.utils.data.TensorDataset(X_h, X_a, target)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
+        criterion = nn.BCEWithLogitsLoss() 
+        optimizer = optim.Adam(self.parameters(), lr=0.01)
+        self.train()
+        for epoch in range(epochs):
+            for bh, ba, by in loader: 
+                optimizer.zero_grad()
+                score_h = self.forward(bh)
+                score_a = self.forward(ba)
+                loss = criterion(score_h - score_a, by)
+                loss.backward()
+                optimizer.step()
 
-    def fit(self, X_home, X_away, y, seasons, epochs=300):
+    def fit2(self, X_home, X_away, y, seasons, epochs=300):
         
         seasons_arr = np.array([int(s.split('-')[0]) for s in seasons]) 
         min_year = seasons_arr.min()
@@ -166,7 +184,7 @@ y = df_train['Target'].values.astype(np.float32)
 # Training loop and print results
 
 model = NeuralBradleyTerry(input_dim=len(feature_names))
-model.fit(X_home, X_away, y, seasons, epochs=500)
+model.fit(X_home, X_away, y, epochs=500) #model.fit2(X_home, X_away, y,seasons, epochs=500)
 
 ranking = get_season_ranking(model, df, target_season, feature_names)
 
@@ -189,7 +207,7 @@ if ranking is not None:
 # Simulation part 
 
 # Thresholds can be adjusted to simulate more or less draws
-df_probas = predict_season_probas(model, df, target_season, feature_names, draw_threshold=0.5, home_advantage=0.3)
+df_probas = predict_season_probas(model, df, target_season, feature_names, draw_threshold=0.5, home_advantage=0)
 
 if df_probas is not None:
     df_probas.to_csv(f"Predictions_{target_season}.csv", index=False)
