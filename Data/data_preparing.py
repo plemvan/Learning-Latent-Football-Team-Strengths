@@ -140,7 +140,7 @@ class DataPreparer:
             raise ValueError("Error while creating the final features dataframe")
 
         if save:
-            self.features_df.to_csv("features_df.csv", index=False)
+            self.features_df.to_csv("Data/Datasets/features_df.csv", index=False)
 
         if display:
             return self.features_df
@@ -356,8 +356,8 @@ class DataPreparer:
 
         # Output
         if save:
-            print("Processing complete. Saving merged dataframe to 'merged_df.csv'.")
-            self.df_merged.to_csv("merged_df.csv", index=False)
+            print("Processing complete. Saving merged dataframe to 'Complete_df.csv'.")
+            self.df_merged.to_csv("Data/Datasets/Complete_df.csv", index=False)
         else:
             print("Processing complete. Merged dataframe is ready.")
         
