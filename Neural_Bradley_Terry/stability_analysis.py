@@ -48,7 +48,7 @@ class NBTR_Stability:
         
         # Generate seeds
         np.random.seed(42)
-        self.seeds = np.random.randint(0, 10000, self.nb_seed)
+        self.seeds = np.random.randint(0, 100, self.nb_seed)
         
         self.models = []
         self.losses = []
