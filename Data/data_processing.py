@@ -62,33 +62,31 @@ class DataProcesser:
         return self
     
     
-    def split_train_test(self, test_size : int):
+    def split_train_test(self, test_season : str):
         
         """
-        Split the data into training and test sets
+        Split the data into training and test sets based on seasons
     
         Parameters
         ----------
-        test_size : int
-            Number of lines to put in the test set
+        test_season : str
+            Season to use for testing (format 'YY-YY'). All seasons before this one will be used for training.
+            Seasons after this one will be ignored.
                     
         Returns
         -------
         train_df : pd.DataFrame
-            Training data
+            Training data (all seasons before test_season)
         test_df : pd.DataFrame
-            Test data
+            Test data (matches from test_season)
         """
 
-        # Create a copy of the dataframe
-        df_copy = self.df.copy()
+        # Extract the starting year of the test season
+        target_year = int(test_season.split('-')[0])
 
-        # Split index
-        split_idx = test_size
-
-        # Split the data
-        train_df = df_copy.iloc[:-split_idx].copy()
-        test_df = df_copy.iloc[-split_idx:].copy()
+        # Create train and test dataframes
+        train_df = self.df[self.df['Season'].apply(lambda s: int(s.split('-')[0]) < target_year)].copy()
+        test_df = self.df[self.df['Season'] == test_season].copy()
 
         # Store the splits
         self.train_df = train_df
@@ -97,7 +95,7 @@ class DataProcesser:
         return train_df, test_df
     
 
-    def get_data(self, df : pd.DataFrame = None):
+    def get_data_BT(self, df : pd.DataFrame = None):
 
         """
         Returns a dictionnary with the list of teams and the result matrix
@@ -153,7 +151,7 @@ class DataProcesser:
         return data
     
     
-    def get_train_test_data(self):
+    def get_train_test_data_BT(self):
         
         """
         Returns processed training and test data
@@ -175,11 +173,40 @@ class DataProcesser:
         if (self.train_df is not None) and (self.test_df is not None):
             
             # Process both splits
-            train_data = self.get_data(self.train_df)
-            test_data = self.get_data(self.test_df)
+            train_data = self.get_data_BT(self.train_df)
+            test_data = self.get_data_BT(self.test_df)
                 
             return train_data, test_data
         
         else:
             raise ValueError("Train and Test dataframes are not set. Please run split_train_test() first.")
     
+
+    def get_data_NBTR(self, feature_names : list) -> dict:
+
+        """
+        Docstring for get_data_NBTR
+        
+        :param self: Description
+        :param feature_names: Description
+        :type feature_names: list
+        :return: Description
+        :rtype: dict
+        """
+
+        # Seasons used in training
+        seasons = self.train_df['Season'].values
+
+        # Features and target 
+        X_home = self.train_df[[f"{col}_Home" for col in feature_names]].values.astype(np.float32)
+        X_away = self.train_df[[f"{col}_Away" for col in feature_names]].values.astype(np.float32)
+        y = self.train_df['Target'].values.astype(np.float32)
+
+        # Input dimension
+        input_dim = len(feature_names)
+
+        return {'X_home' : X_home,
+                'X_away' : X_away,
+                'y' : y,
+                'input_dim' : input_dim,
+                'seasons' : seasons}
