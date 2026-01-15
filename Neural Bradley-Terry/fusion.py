@@ -135,11 +135,14 @@ if 'Team' in df_merged.columns: df_merged = df_merged.drop(columns=['Team'])
 rename_dict = {col: col + '_Away' for col in feature_names}
 df_merged = df_merged.rename(columns=rename_dict)
 
-# Fill Stats NaNs (Promoted teams)
-defaults = {'Strength_Rank_Based': 0.05, 'Pythagorean_Exp': 0.35, 'Avg_Goals_Scored': 0.8, 'Home_Dependency': 0.5}
-for col in feature_names:
-    df_merged[col + '_Home'] = df_merged[col + '_Home'].fillna(defaults[col])
-    df_merged[col + '_Away'] = df_merged[col + '_Away'].fillna(defaults[col])
+defaults = {'Strength_Rank_Based': 0.05, 'Pythagorean_Exp': 0.35, 'Avg_Goals_Scored': 0.8, 'Home_Dependency': 0.6,'Avg_Shots_Target': 3.0, 'Avg_Corners': 3.5, 'Avg_Cards': 2.2}
+all_features = ['Strength_Rank_Based', 'Pythagorean_Exp', 'Avg_Goals_Scored', 'Home_Dependency','Avg_Shots_Target', 'Avg_Corners', 'Avg_Cards']
+for col in all_features:
+    if f"{col}_Home" in df_merged.columns:
+        df_merged[f"{col}_Home"] = df_merged[f"{col}_Home"].fillna(defaults[col])
+    if f"{col}_Away" in df_merged.columns:
+        df_merged[f"{col}_Away"] = df_merged[f"{col}_Away"].fillna(defaults[col])
+
 
 # Target Variables
 df_merged['Target'] = df_merged['FTR'].map({'H': 1.0, 'A': 0.0, 'D': 0.5})

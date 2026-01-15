@@ -14,8 +14,7 @@ class NeuralBradleyTerry(nn.Module):
         self.feature_extractor = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 1) # Output: latent strength score
-        )
+            nn.Linear(hidden_dim, 1)) # Output: latent strength score
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.BCEWithLogitsLoss()
 
@@ -164,7 +163,7 @@ feature_names = [
     'Avg_Cards'        
 ]
 
-target_season = '24-25' 
+target_season = '25-26' 
 
 # Training data (all seasons before the target season)
 df_train = df[df['Season'] != target_season].copy()
