@@ -3,7 +3,7 @@ import numpy as np
 
 # Functions for season standardization and previous season calculation and stats aggregation
 
-def get_standard(s):
+def get_standard(s): ##
     """Convert all season formats to 'YY-YY' format."""
     s = str(s).strip()
     try:
@@ -16,9 +16,9 @@ def get_standard(s):
             return f"{start % 100:02d}-{(start + 1) % 100:02d}"
         return s
     except:
-        return s
+        return s ##
 
-def get_prev_season(season):
+def get_prev_season(season): ##
     """Compute the previous season string in 'YY-YY' format."""
     try:
         start = int(season.split('-')[0])
@@ -26,7 +26,7 @@ def get_prev_season(season):
         prev_end = start
         return f"{prev_start:02d}-{prev_end:02d}"
     except:
-        return None
+        return None ##
 
 def get_season_stats(df_matchs):
     """Calculate aggregated stats (Shots, Corners, Cards) per team per season."""
@@ -54,22 +54,22 @@ def get_season_stats(df_matchs):
 
 # Loading and preprocessing datasets
 
-df_matches = pd.read_csv("Data/Dataset_clean.csv")
-df_stats = pd.read_csv("Data/features.csv")
-df_market = pd.read_csv("Data/ligue1_market_values_2010_2025.csv") 
+df_matches = pd.read_csv("Data/Dataset_clean.csv") ##
+df_stats = pd.read_csv("Data/features.csv") ##
+df_market = pd.read_csv("Data/ligue1_market_values_2010_2025.csv")  ##
 
-df_matches['Season'] = df_matches['Season'].astype(str).apply(get_standard)
-df_stats['Season'] = df_stats['Season'].astype(str).apply(get_standard)
-df_market['Season'] = df_market['Season'].astype(str).apply(get_standard)
+df_matches['Season'] = df_matches['Season'].astype(str).apply(get_standard) ##
+df_stats['Season'] = df_stats['Season'].astype(str).apply(get_standard) ##
+df_market['Season'] = df_market['Season'].astype(str).apply(get_standard) ##
 
 
-if 'Total_Market_Value_Millions' in df_market.columns:
-    df_market = df_market.rename(columns={'Total_Market_Value_Millions': 'Market_Value'})
-elif 'Value' in df_market.columns:
-    df_market = df_market.rename(columns={'Value': 'Market_Value'})
+if 'Total_Market_Value_Millions' in df_market.columns: ##
+    df_market = df_market.rename(columns={'Total_Market_Value_Millions': 'Market_Value'}) ##
+elif 'Value' in df_market.columns: ##
+    df_market = df_market.rename(columns={'Value': 'Market_Value'}) ##
 
 # Team Name Mapping
-team_mapping = {
+team_mapping = { ##
     "Ajaccio GFCO": "GFC Ajaccio", "Toulouse FC": "FC Toulouse", "Toulouse": "FC Toulouse",   
     "Arles": "AC Arles-Avignon", "Arles-Avignon": "AC Arles-Avignon", 
     "Evian Thonon Gaillard": "FC Évian Thonon Gaillard", "Evian TG": "Evian Thonon Gaillard FC",
@@ -86,14 +86,14 @@ team_mapping = {
     "Auxerre": "AJ Auxerre", "Sochaux": "FC Sochaux-Montbéliard", "Le Mans": "Le Mans FC",
     "Valenciennes": "Valenciennes FC", "Clermont": "Clermont Foot 63", "Amiens": "Amiens SC", 
     "Nimes": "Nîmes Olympique", "Le Havre": "Le Havre AC", "Boulogne": "US Boulogne"
-}
+} ##
 
 for df in [df_matches, df_stats, df_market]:
     if 'HomeTeam' in df.columns: df['HomeTeam'] = df['HomeTeam'].replace(team_mapping)
     if 'AwayTeam' in df.columns: df['AwayTeam'] = df['AwayTeam'].replace(team_mapping)
     if 'Team' in df.columns: df['Team'] = df['Team'].replace(team_mapping)
 
-df_matches['Prev_Season'] = df_matches['Season'].apply(get_prev_season)
+df_matches['Prev_Season'] = df_matches['Season'].apply(get_prev_season) ##
 
 # Merging datasets to create enriched training dataset
 
