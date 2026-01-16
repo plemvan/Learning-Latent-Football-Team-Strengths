@@ -9,7 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 
-from Neural_Bradley_Terry.NeuralBT import NeuralBradleyTerry
+from Models.NeuralBT import NeuralBradleyTerry
 
 #===========================================================#
 

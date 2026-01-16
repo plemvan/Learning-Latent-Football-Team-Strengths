@@ -3,7 +3,7 @@
 ## Imports
 import numpy as np
 import matplotlib.pyplot as plt
-from .BT_classical import BradleyTerry
+from Models.ClassicalBT import BradleyTerry
 
 #===============================================================#
 

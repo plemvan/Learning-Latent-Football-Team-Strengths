@@ -3,7 +3,7 @@
 ## Imports
 import numpy as np
 import pandas as pd
-from .Gradient_descent import GradientDescent
+from ModelTools.Gradient_descent import GradientDescent
 
 
 #==============================================================#

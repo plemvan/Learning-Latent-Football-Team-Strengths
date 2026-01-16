@@ -7,7 +7,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from Data.data_processing import DataProcesser
-from Neural_Bradley_Terry.NeuralBT import NeuralBradleyTerry
+from Models.NeuralBT import NeuralBradleyTerry
 
 #=================================================================#
 
@@ -317,8 +317,8 @@ class NBTR_calibrate:
         plt.figure(figsize=(10, 8))
         plt.imshow(losses, cmap='viridis', origin='lower', aspect='auto')
         plt.colorbar(label='Weighted Log Loss')
-        plt.xticks(range(0,len(home_advantages),int(np.floor(len(home_advantages)/10))), [f'{ha:.2f}' for ha in home_advantages])
-        plt.yticks(range(0,len(draw_thresholds),int(np.floor(len(draw_thresholds)/10))), [f'{dt:.2f}' for dt in draw_thresholds])
+        plt.xticks(range(len(home_advantages)), [f'{ha:.2f}' for ha in home_advantages])
+        plt.yticks(range(len(draw_thresholds)), [f'{dt:.2f}' for dt in draw_thresholds])
         plt.xlabel('Home Advantage')
         plt.ylabel('Draw Threshold')
         plt.title(f'Weighted Log Loss Heatmap')
