@@ -106,11 +106,12 @@ class BT_evaluate_strengths:
     def plot_strengths(self, model : Literal['BT', 'NBTR']):
         
         """
-        Docstring for plot_strengths
-        
-        :param self: Description
-        :param model: Description
-        :type model: Literal['BT', 'NBTR']
+        Plot strengths of the model as horizontal bars
+
+        Parameters
+        ----------
+        model : str
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
         """
 
         if model == 'BT':
@@ -137,41 +138,6 @@ class BT_evaluate_strengths:
         plt.xlabel('Teams')
         plt.ylabel('Strength')
         plt.title(title)
-        plt.show()
-
-        return
-
-
-    def plot_scatter_strengths(self):
-        
-        """
-        Plot a scatter plot of BT strengths vs NBTR strengths with the y=x line.
-        """
-        
-        if not (self.has_BT and self.has_NBTR):
-            raise ValueError("Both BT and NBTR results are required for this method.")
-        
-        plt.figure(figsize=(8, 6))
-        plt.scatter(self.results['BT_strength'], self.results['NBTR_strength'], alpha=0.7)
-        plt.plot([self.results['BT_strength'].min(), self.results['BT_strength'].max()], 
-                 [self.results['BT_strength'].min(), self.results['BT_strength'].max()], 
-                 color='red', linestyle='--', label='y=x')
-        
-        # Add team labels
-        for _, row in self.results.iterrows():
-            plt.annotate(row['Team'], 
-                         (row['BT_strength'], row['NBTR_strength']), 
-                         textcoords="offset points", 
-                         xytext=(5,5), 
-                         ha='left', 
-                         fontsize=8, 
-                         alpha=0.8)
-        
-        plt.xlabel('BT Strengths')
-        plt.ylabel('NBTR Strengths')
-        plt.title('Scatter Plot of BT vs NBTR Strengths')
-        plt.legend()
-        plt.grid(True)
         plt.show()
 
         return
@@ -215,11 +181,10 @@ class BT_evaluate_strengths:
         
         # Set integer ticks
         max_rank = max(df['BT_rank'].max(), df['NBTR_rank'].max())
-        step = 2 # max(1, int(max_rank // 10))  # Adjust step for readability
+        step = 2
         ticks = list(range(1, int(max_rank) + 1, step))
         plt.xticks(ticks)
         plt.yticks(ticks)
-        
         plt.gca().invert_yaxis()  # Invert y-axis so rank 1 is at the top
         plt.gca().invert_xaxis()  # Invert x-axis so rank 1 is at the right
         plt.show()
@@ -322,14 +287,24 @@ class BT_evaluate_strengths:
     def _spearman_with_bootstrap(self, x, y):
 
         """
-        Docstring for _spearman_with_bootstrap
+        Internal method to compute spearman correlation with bootstrap confidence intervals on arbitrary arrays
         
-        :param self: Description
-        :param x: Description
-        :param y: Description
-        """
+        Parameters
+        ----------
+        x : array-like
+            First array of values
+        y : array-like
+            Second array of values
 
-        # Similar to spearman_correlation but for two arbitrary arrays
+        Returns
+        -------
+        result : dict
+            Dictionary containing:
+            - 'correlation': Spearman rank correlation coefficient
+            - 'pvalue': Two-tailed p-value for testing non-correlation
+            - 'ci_lower': Lower bound of the confidence interval
+            - 'ci_upper': Upper bound of the confidence interval
+        """
 
         # Original correlation
         corr, pvalue = spearmanr(x, y)
@@ -366,15 +341,23 @@ class BT_evaluate_strengths:
     def results_correlation(self, model : Literal['BT', 'NBTR'], metric : Literal['points','rank', 'winrate', 'adjusted_winrate']) -> dict:
 
         """
-        Docstring for compare_with_results
+        Measure Spearman correlation between model strengths and performance metrics (points, rank, winrate, adjusted winrate)
+
+        Parameters
+        ----------
+        model : str
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
+        metric : str
+            'points', 'rank', 'winrate', or 'adjusted_winrate'
         
-        :param self: Description
-        :param model: Description
-        :type model: Literal['BT', 'NBTR']
-        :param metric: Description
-        :type metric: Literal['points', 'rank', 'winrate', 'adjusted_winrate']
-        :return: Description
-        :rtype: dict
+        Returns
+        -------
+        result : dict
+            Dictionary containing:
+            - 'correlation': Spearman rank correlation coefficient
+            - 'pvalue': Two-tailed p-value for testing non-correlation
+            - 'ci_lower': Lower bound of the confidence interval
+            - 'ci_upper': Upper bound of the confidence interval
         """
 
         if model == 'BT' and not self.has_BT:
@@ -404,6 +387,43 @@ class BT_evaluate_strengths:
         result = self._spearman_with_bootstrap(merged_df[strength_col], merged_df[compare_col])
 
         return result
+    
+
+    ## Unused methods
+
+    def plot_scatter_strengths(self):
+        
+        """
+        Plot a scatter plot of BT strengths vs NBTR strengths with the y=x line.
+        """
+        
+        if not (self.has_BT and self.has_NBTR):
+            raise ValueError("Both BT and NBTR results are required for this method.")
+        
+        plt.figure(figsize=(8, 6))
+        plt.scatter(self.results['BT_strength'], self.results['NBTR_strength'], alpha=0.7)
+        plt.plot([self.results['BT_strength'].min(), self.results['BT_strength'].max()], 
+                 [self.results['BT_strength'].min(), self.results['BT_strength'].max()], 
+                 color='red', linestyle='--', label='y=x')
+        
+        # Add team labels
+        for _, row in self.results.iterrows():
+            plt.annotate(row['Team'], 
+                         (row['BT_strength'], row['NBTR_strength']), 
+                         textcoords="offset points", 
+                         xytext=(5,5), 
+                         ha='left', 
+                         fontsize=8, 
+                         alpha=0.8)
+        
+        plt.xlabel('BT Strengths')
+        plt.ylabel('NBTR Strengths')
+        plt.title('Scatter Plot of BT vs NBTR Strengths')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+        return
 
 
 class BT_evaluate_probas:
@@ -447,6 +467,7 @@ class BT_evaluate_probas:
         self.results = base_df
         
         return
+    
 
     def logloss(self, model : Literal['BT','NBTR']) -> float:
 
@@ -506,11 +527,11 @@ class BT_evaluate_probas:
         Parameters
         ----------
         model : str
-            'BT' or 'NBTR'
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
             
         Returns
         -------
-        float
+        accuracy : float
             Accuracy as proportion of correct predictions
         """
         
@@ -537,11 +558,11 @@ class BT_evaluate_probas:
         Parameters
         ----------
         model : str
-            'BT' or 'NBTR'
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
             
         Returns
         -------
-        dict
+        recalls : dict
             Dictionary with recall for each class
         """
         
@@ -573,11 +594,11 @@ class BT_evaluate_probas:
         Parameters
         ----------
         model : str
-            'BT' or 'NBTR'
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
             
         Returns
         -------
-        dict
+        precisions : dict
             Dictionary with precision for each class
         """
         
@@ -599,124 +620,3 @@ class BT_evaluate_probas:
             precisions[cls] = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         
         return precisions
-    
-    
-    def brier_score(self, model : Literal['BT','NBTR']) -> float:
-        
-        """
-        Calculate the Brier score for the specified model.
-        
-        Parameters
-        ----------
-        model : str
-            'BT' or 'NBTR'
-            
-        Returns
-        -------
-        float
-            The Brier score
-        """
-        
-        if model == 'BT':
-            if not self.has_BT:
-                raise ValueError("BT results are not available.")
-            p_home_col = 'P_Home'
-            p_draw_col = 'P_Draw'
-            p_away_col = 'P_Away'
-        elif model == 'NBTR':
-            if not self.has_NBTR:
-                raise ValueError("NBTR results are not available.")
-            p_home_col = 'P_Home' if not self.has_BT else 'P_Home_NBTR'
-            p_draw_col = 'P_Draw' if not self.has_BT else 'P_Draw_NBTR'
-            p_away_col = 'P_Away' if not self.has_BT else 'P_Away_NBTR'
-        else:
-            raise ValueError("Model must be 'BT' or 'NBTR'")
-        
-        brier_sum = 0.0
-        n_matches = len(self.results)
-        
-        for _, row in self.results.iterrows():
-            ftr = row['FTR']
-            p_home = row[p_home_col]
-            p_draw = row[p_draw_col]
-            p_away = row[p_away_col]
-            
-            if ftr == 'H':
-                o_home, o_draw, o_away = 1, 0, 0
-            elif ftr == 'D':
-                o_home, o_draw, o_away = 0, 1, 0
-            elif ftr == 'A':
-                o_home, o_draw, o_away = 0, 0, 1
-            else:
-                raise ValueError(f"Unknown FTR value: {ftr}")
-            
-            brier_sum += (p_home - o_home)**2 + (p_draw - o_draw)**2 + (p_away - o_away)**2
-        
-        return brier_sum / n_matches
-    
-    
-    def reliability_curve_draw(self, model : Literal['BT','NBTR'], n_bins : int = 10, plot : bool = False) -> pd.DataFrame:
-        
-        """
-        Calculate the reliability curve data for the 'Draw' class.
-        
-        Parameters
-        ----------
-        model : str
-            'BT' or 'NBTR'
-        n_bins : int, default 10
-            Number of bins for grouping probabilities
-        plot : bool, default False
-            If True, plot the reliability curve
-            
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with columns: 'bin_center', 'mean_pred_prob', 'observed_freq', 'bin_size'
-        """
-        
-        if model == 'BT':
-            if not self.has_BT:
-                raise ValueError("BT results are not available.")
-            p_draw_col = 'P_Draw'
-        elif model == 'NBTR':
-            if not self.has_NBTR:
-                raise ValueError("NBTR results are not available.")
-            p_draw_col = 'P_Draw' if not self.has_BT else 'P_Draw_NBTR'
-        else:
-            raise ValueError("Model must be 'BT' or 'NBTR'")
-        
-        # Create bins
-        bins = np.linspace(0, 1, n_bins + 1)
-        bin_labels = [(bins[i] + bins[i+1]) / 2 for i in range(n_bins)]  # bin centers
-        
-        # Assign bins to data
-        self.results = self.results.copy()
-        self.results['prob_bin'] = pd.cut(self.results[p_draw_col], bins=bins, labels=bin_labels, include_lowest=True)
-        
-        # Group by bin and calculate metrics
-        grouped = self.results.groupby('prob_bin', observed=False).agg(
-            mean_pred_prob=(p_draw_col, 'mean'),
-            observed_freq=('FTR', lambda x: (x == 'D').mean()),
-            bin_size=('FTR', 'size')
-        ).reset_index()
-        
-        # Rename prob_bin to bin_center
-        grouped = grouped.rename(columns={'prob_bin': 'bin_center'})
-        
-        if plot:
-            plt.figure(figsize=(8, 6))
-            plt.plot(grouped['mean_pred_prob'], grouped['observed_freq'], marker='o', label='Observed')
-            plt.plot([0, 1], [0, 1], linestyle='--', color='red', label='Perfect calibration')
-            plt.xlabel('Mean Predicted Probability')
-            plt.ylabel('Observed Frequency')
-            plt.title(f'Reliability Curve for Draw ({model})')
-            plt.legend()
-            plt.grid(True)
-            plt.show()
-        
-        return grouped
-
-
-
-
