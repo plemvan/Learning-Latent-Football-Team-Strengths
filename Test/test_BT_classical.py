@@ -620,3 +620,69 @@ class BT_evaluate_probas:
             precisions[cls] = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         
         return precisions
+
+
+    def accuracy_per_team(self, model : Literal['BT','NBTR']):
+
+        """
+        Compute accuracy for every team in the DataFrame
+        
+        Parameters
+        ----------
+        model : str
+            'BT' for Bradley-Terry classical, 'NBTR' for Neural Bradley-Terry
+        """
+
+        if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
+            result_col = 'Result'
+        elif model == 'NBTR':
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            result_col = 'Result' if not self.has_BT else 'Result_NBTR'
+        else:
+            raise ValueError("Model must be 'BT' or 'NBTR'")
+        
+        # Unique teams
+        teams = pd.unique(self.results[['HomeTeam','AwayTeam']].values.ravel())
+
+        results = []
+
+        for team in teams:
+
+            df_team = self.results[(self.results['HomeTeam']==team)|(self.results['AwayTeam']==team)]
+
+            if len(df_team)==0:
+                continue
+
+            accuracy = (df_team['FTR'] == df_team[result_col]).mean()
+
+            results.append({
+            'Team': team,
+            'Accuracy': accuracy
+            })
+
+        acc_df = pd.DataFrame(results).sort_values('Accuracy', ascending=False).reset_index(drop=True)
+        
+        # ---- Plot ----
+        plt.figure(figsize=(10, max(6, 0.35 * len(acc_df))))
+
+        # Default colors
+        colors = ['green'] * len(acc_df)
+
+        # Highlight Paris FC if present
+        if 'Paris FC' in acc_df['Team'].values:
+            paris_idx = acc_df.index[acc_df['Team'] == 'Paris FC'][0]
+            colors[paris_idx] = 'orange'  # couleur spécifique pour Paris FC
+
+        plt.barh(acc_df['Team'], acc_df['Accuracy'], color=colors)
+        plt.xlabel('Accuracy')
+        plt.ylabel('Team')
+        plt.title('Prediction Accuracy by Team')
+        plt.gca().invert_yaxis()  # Best team on top
+        plt.grid(axis='x', linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+        return acc_df
