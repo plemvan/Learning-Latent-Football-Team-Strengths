@@ -19,13 +19,25 @@ class BT_evaluate_strengths:
         self.BT_results = BT_results
         self.NBTR_results = NBTR_results
 
-        # Will be used later to check consistency
-        # if set(self.BT_results['Team']) != set(self.NBTR_results['Team']):
-            # raise ValueError("Team index in BT_results and NBTR_results do not match.")
+        # Check availability
+        self.has_BT = self.BT_results is not None
+        self.has_NBTR = self.NBTR_results is not None
 
-        self.results = self.BT_results.merge(self.NBTR_results, on='Team', how='inner')
-
-        self.results = self.results.rename(columns={self.results.columns[0]: 'Team',
+        # Merge results
+        if not self.has_BT and not self.has_NBTR:
+            raise ValueError("At least one of BT_results or NBTR_results must be provided.")
+        
+        if self.has_BT and not self.has_NBTR:
+            self.results = self.BT_results.copy()
+            self.results = self.results.rename(columns={self.results.columns[0]: 'Team',
+                                                    self.results.columns[1]: 'BT_strength'})
+        elif not self.has_BT and self.has_NBTR:
+            self.results = self.NBTR_results.copy()
+            self.results = self.results.rename(columns={self.results.columns[0]: 'Team',
+                                                    self.results.columns[1]: 'NBTR_strength'})
+        else:
+            self.results = self.BT_results.merge(self.NBTR_results, on='Team', how='right')
+            self.results = self.results.rename(columns={self.results.columns[0]: 'Team',
                                                     self.results.columns[1]: 'BT_strength',
                                                     self.results.columns[2]: 'NBTR_strength'})
  
@@ -102,14 +114,16 @@ class BT_evaluate_strengths:
         """
 
         if model == 'BT':
-
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             # sort by BT strengths
             df = self.results.sort_values(by='BT_strength', ascending=True)
             strengths = df['BT_strength']
             title = "Bradley-Terry Strengths"
 
         elif model == 'NBTR':
-
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
             # sort by NBTR strengths
             df = self.results.sort_values(by='NBTR_strength', ascending=True)
             strengths = df['NBTR_strength']
@@ -133,6 +147,9 @@ class BT_evaluate_strengths:
         """
         Plot a scatter plot of BT strengths vs NBTR strengths with the y=x line.
         """
+        
+        if not (self.has_BT and self.has_NBTR):
+            raise ValueError("Both BT and NBTR results are required for this method.")
         
         plt.figure(figsize=(8, 6))
         plt.scatter(self.results['BT_strength'], self.results['NBTR_strength'], alpha=0.7)
@@ -166,6 +183,9 @@ class BT_evaluate_strengths:
         Plot a scatter plot of BT ranks vs NBTR ranks with the y=x line.
         Ranks are based on descending strengths (higher strength = lower rank).
         """
+        
+        if not (self.has_BT and self.has_NBTR):
+            raise ValueError("Both BT and NBTR results are required for this method.")
         
         # Use a copy to avoid modifying self.results
         df = self.results.copy()
@@ -222,6 +242,9 @@ class BT_evaluate_strengths:
             - 'ci_upper': Upper bound of the confidence interval
         """
 
+        if not (self.has_BT and self.has_NBTR):
+            raise ValueError("Both BT and NBTR results are required for this method.")
+
         # Original correlation
         corr, pvalue = pearsonr(self.results['BT_strength'], self.results['NBTR_strength'])
 
@@ -264,6 +287,9 @@ class BT_evaluate_strengths:
             - 'ci_lower': Lower bound of the confidence interval
             - 'ci_upper': Upper bound of the confidence interval
         """
+
+        if not (self.has_BT and self.has_NBTR):
+            raise ValueError("Both BT and NBTR results are required for this method.")
 
         # Original correlation
         corr, pvalue = spearmanr(self.results['BT_strength'], self.results['NBTR_strength'])
@@ -351,6 +377,11 @@ class BT_evaluate_strengths:
         :rtype: dict
         """
 
+        if model == 'BT' and not self.has_BT:
+            raise ValueError("BT results are not available.")
+        elif model == 'NBTR' and not self.has_NBTR:
+            raise ValueError("NBTR results are not available.")
+
         # Performances metrics
         if self.performance_metrics is None:
             self.calculate_performance_metrics()
@@ -384,22 +415,36 @@ class BT_evaluate_probas:
         self.BT_results = BT_results
         self.NBTR_results = NBTR_results
 
+        # Check availability
+        self.has_BT = self.BT_results is not None
+        self.has_NBTR = self.NBTR_results is not None
+
+        if not (self.has_BT or self.has_NBTR):
+            raise ValueError("At least one of BT_results or NBTR_results must be provided.")
+
         # Test data
         self.test_df = test_df
 
         # Final results
-        self.results = self.test_df[['HomeTeam', 'AwayTeam', 'FTR']].merge(
-            self.BT_results, 
-            on=['HomeTeam', 'AwayTeam'], 
-            how='inner', 
-            suffixes=('', '_BT')
-        )
-        self.results = self.results.merge(
-            self.NBTR_results, 
-            on=['HomeTeam', 'AwayTeam'], 
-            how='inner', 
-            suffixes=('', '_NBTR')
-        )
+        base_df = self.test_df[['HomeTeam', 'AwayTeam', 'FTR']].copy()
+        
+        if self.has_BT:
+            base_df = base_df.merge(
+                self.BT_results, 
+                on=['HomeTeam', 'AwayTeam'], 
+                how='inner',
+                suffixes=('', '_BT') if self.has_NBTR else ('', '')
+            )
+        
+        if self.has_NBTR:
+            base_df = base_df.merge(
+                self.NBTR_results, 
+                on=['HomeTeam', 'AwayTeam'], 
+                how='inner', 
+                suffixes=('', '_NBTR') if self.has_BT else ('', '')
+            )
+        
+        self.results = base_df
         
         return
 
@@ -420,13 +465,17 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             p_home_col = 'P_Home'
             p_draw_col = 'P_Draw'
             p_away_col = 'P_Away'
         elif model == 'NBTR':
-            p_home_col = 'P_Home_NBTR'
-            p_draw_col = 'P_Draw_NBTR'
-            p_away_col = 'P_Away_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            p_home_col = 'P_Home' if not self.has_BT else 'P_Home_NBTR'
+            p_draw_col = 'P_Draw' if not self.has_BT else 'P_Draw_NBTR'
+            p_away_col = 'P_Away' if not self.has_BT else 'P_Away_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
@@ -466,9 +515,13 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             result_col = 'Result'
         elif model == 'NBTR':
-            result_col = 'Result_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            result_col = 'Result' if not self.has_BT else 'Result_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
@@ -493,9 +546,13 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             result_col = 'Result'
         elif model == 'NBTR':
-            result_col = 'Result_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            result_col = 'Result' if not self.has_BT else 'Result_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
@@ -525,9 +582,13 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             result_col = 'Result'
         elif model == 'NBTR':
-            result_col = 'Result_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            result_col = 'Result' if not self.has_BT else 'Result_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
@@ -557,13 +618,17 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             p_home_col = 'P_Home'
             p_draw_col = 'P_Draw'
             p_away_col = 'P_Away'
         elif model == 'NBTR':
-            p_home_col = 'P_Home_NBTR'
-            p_draw_col = 'P_Draw_NBTR'
-            p_away_col = 'P_Away_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            p_home_col = 'P_Home' if not self.has_BT else 'P_Home_NBTR'
+            p_draw_col = 'P_Draw' if not self.has_BT else 'P_Draw_NBTR'
+            p_away_col = 'P_Away' if not self.has_BT else 'P_Away_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
@@ -611,9 +676,13 @@ class BT_evaluate_probas:
         """
         
         if model == 'BT':
+            if not self.has_BT:
+                raise ValueError("BT results are not available.")
             p_draw_col = 'P_Draw'
         elif model == 'NBTR':
-            p_draw_col = 'P_Draw_NBTR'
+            if not self.has_NBTR:
+                raise ValueError("NBTR results are not available.")
+            p_draw_col = 'P_Draw' if not self.has_BT else 'P_Draw_NBTR'
         else:
             raise ValueError("Model must be 'BT' or 'NBTR'")
         
