@@ -1,10 +1,11 @@
-#========== Data Processing ==========#
+#========== Module for Data Processing ==========#
 
 ## Imports
 import numpy as np
 import pandas as pd
 
-#=====================================#
+#================================================#
+
 
 class DataProcesser:
 
@@ -22,44 +23,13 @@ class DataProcesser:
         filepath : str
             Path to the data file
         """
+
         self.df = pd.read_csv(filepath)
 
         self.train_df : pd.DataFrame = None
         self.test_df : pd.DataFrame = None
 
         return
-
-    
-    def filter_year(self, year : str):
-
-        """
-        Filter data for a given year
-
-        Parameters
-        ----------
-        year : str
-            Year to filter the data (on format 'YY-YY')
-        """
-
-        self.df = self.df[self.df['Season']==year]
-
-        return self
-    
-    
-    def remove_year(self, year : str):
-
-        """
-        Removes a given season from the dataset
-        
-        Parameters
-        ----------
-        year : str
-            Year to remove (format 'YY-YY')
-        """
-
-        self.df = self.df[self.df['Season']!=year]
-
-        return self
     
     
     def split_train_test(self, test_season : str):

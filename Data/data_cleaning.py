@@ -1,11 +1,10 @@
-#========== Data Cleaning and pre-processing ==========#
+#========== Module for Data Cleaning and pre-processing ==========#
 
 ## Imports
-import numpy as np
 import pandas as pd
 from typing import Union
 
-#======================================================#
+#=================================================================#
 
 
 class Datacleaner:
@@ -25,6 +24,7 @@ class Datacleaner:
 
         self.df = pd.read_csv(filepath)
 
+        # Columns of interest among all available variables
         self.interest_columns = ["Div", "Date", "Time", "HomeTeam", "AwayTeam",
                                  "FTHG", "HG", "FTAG", "AG", "FTR", "Res",
                                  "HTHG", "HTAG", "HTR", "Attendance", "Referee",
@@ -48,11 +48,10 @@ class Datacleaner:
     def drop_rows(self, row_idxs : list[int]):
 
         """
-        Drops rows containing only NaN
+        Drops rows given a list of index
 
         Parameters
         ----------
-
         row_idxs : List[int]
             List of row indexes
         """
@@ -70,7 +69,6 @@ class Datacleaner:
 
         Parameters
         ----------
-
         column: str
             Name of the column in which the replacement is made
         value : str | int | float
@@ -100,8 +98,7 @@ class Datacleaner:
         self.df["Season"] = year.where(month >= 7, year - 1).astype(str) + '-' + (year.where(month >= 7, year - 1) + 1).astype(str)
 
         # Format season to 'YY-YY'
-
-        def format_season(s):
+        def format_season(s:str):
             parts = s.split('-')
             return '-'.join([p[-2:] for p in parts])
         
@@ -113,7 +110,7 @@ class Datacleaner:
     def save_data(self, output_path : str, returns : bool = False):
 
         """
-        Save the data set to .csv format
+        Save the dataset to .csv format
         
         Parameters
         ----------

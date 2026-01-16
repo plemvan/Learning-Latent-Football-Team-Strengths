@@ -1,26 +1,27 @@
-#========== Data Preparing Module ==========#
+#========== Module for Data Preparing  ==========#
 
 ## Imports
 import numpy as np
 import pandas as pd
-from scipy import stats
 
-#===========================================#
+#================================================#
+
 
 class DataPreparer:
 
-    """
-    Docstring for DataPreparer
-    """
+    """Class for preparing data (additional cleaning, merge, ...)"""
 
     def __init__(self, match_data_filepath : str, market_value_filepath : str):
 
         """
-        Docstring for __init__
-        
-        :param self: Description
-        :param filepath: Description
-        :type filepath: str
+        Data Preparer
+
+        Parameters
+        ----------
+        match_data_filepath : str
+            Filepath to the match data CSV file
+        market_value_filepath : str
+            Filepath to the market value data CSV file
         """
 
         # Original Match Data        
@@ -150,7 +151,9 @@ class DataPreparer:
     def _match_prep(self):
 
         """
-        Docstring
+        method to prepare match data
+        1) Add Previous Season Column
+        2) Standardize Team Names
         """
 
         # Add a 'Previous Season' Column
@@ -175,7 +178,9 @@ class DataPreparer:
     def _market_value_prep(self):
 
         """
-        Docstring
+        method to prepare market value data
+        1) Standardize Season Format
+        2) Standardize Column Names
         """
 
         # Standard Season name
@@ -202,7 +207,9 @@ class DataPreparer:
     def _team_mapping(self):
 
         """
-        Docstring
+        method to map team names
+        1) Map team names in match data, market value data and features data
+        2) Use self.team_mapping dictionary for mapping
         """
         
         # Creating feature engineering if not done
