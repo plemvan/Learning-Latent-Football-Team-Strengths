@@ -1,11 +1,11 @@
-#========== Functions for BT Classical ==========#
+#========== Module for calibrating BT Hyperparameters ==========#
 
 ## Imports
 import numpy as np
 import matplotlib.pyplot as plt
 from .BT_classical import BradleyTerry
 
-#================================================#
+#===============================================================#
 
 
 class BT_calibrate:

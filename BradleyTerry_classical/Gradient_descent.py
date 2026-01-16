@@ -1,9 +1,10 @@
-#========== Gradient Descent for Bradley-Terry ==========#
+#========== Module for Gradient Descent ==========#
 
 ## Imports
 import numpy as np
 
-#======================================#
+#=================================================#
+
 
 class GradientDescent():
 

@@ -1,19 +1,18 @@
-#========== Classical Bradley-Terry Model ==========#
+#========== Module for Classical Bradley-Terry Model ==========#
 
 ## Imports
 import numpy as np
 import pandas as pd
-from scipy.special import expit
 from .Gradient_descent import GradientDescent
 
 
-#===================================================#
+#==============================================================#
 
 class BradleyTerry():
 
     """Class implementing the classical Bradley-Terry framework"""
 
-    def __init__(self, lambda_draw: float, learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
+    def __init__(self, lambda_draw : float, learning_rate : float = 0.01, n_iterations : int = 1000, tolerance : float = 1e-6):
         
         """
         Bradley-Terry model
@@ -148,7 +147,7 @@ class BradleyTerry():
                 # Total number of matches
                 Nkj = W[k, j] + W[j, k] + D[k, j]
 
-                # ----- Stable computation of expected term -----
+                # Numerically stable computation of expected term
                 m = max(tk, tj)
 
                 exp_k = np.exp(tk - m)
@@ -184,8 +183,6 @@ class BradleyTerry():
         self : object
         """
 
-        
-
         self.theta = np.zeros(train_data['Victory Matrix'].shape[0])
         self.W = train_data['Victory Matrix']
         self.D = train_data['Draw Matrix']
@@ -220,12 +217,12 @@ class BradleyTerry():
             DataFrame with columns 'Team' and 'Strength'
         """
 
-        result = pd.DataFrame({
+        strengths = pd.DataFrame({
             'Team': self.teams,
             'Strength': [float(value) for value in self.theta]
         })
 
-        return result
+        return strengths
     
     
     
@@ -244,7 +241,7 @@ class BradleyTerry():
         Returns
         -------
         probs : dict
-            Dictionary with keys 'team1_win', 'draw', 'team2_win'
+            Dictionary with keys f'{team1}_win', 'draw', f'{team2}_win'
         """
 
         i = self.teams_index[team1]
