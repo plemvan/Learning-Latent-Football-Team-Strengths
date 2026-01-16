@@ -21,7 +21,7 @@ class NBTR_calibrate:
         """
         Calibrating NBTR Hyperparameters
 
-        Parameters:
+        Parameters
         -----------
         train_data_filepath : str
             Filepath to the training data CSV

@@ -1,14 +1,18 @@
-#========== Stability Analysis for NBTR ==========#
+#========== Module for Stability Analysis of NBTR ==========#
 
+## Imports
+import torch
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import torch
 import torch.nn as nn
 import seaborn as sns
+import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 
-from .NeuralBT import NeuralBradleyTerry
+from Neural_Bradley_Terry.NeuralBT import NeuralBradleyTerry
+
+#===========================================================#
+
 
 class NBTR_Stability:
     """
@@ -16,6 +20,7 @@ class NBTR_Stability:
     """
 
     def __init__(self, train_df : pd.DataFrame, test_df : pd.DataFrame, feature_names : list, nb_seed : int):
+        
         """
         Initialize the stability analysis.
 
@@ -30,9 +35,13 @@ class NBTR_Stability:
         nb_seed : int
             Number of different seeds to test
         """
+
+        # Data
         self.train_df = train_df
         self.test_df = test_df
         self.feature_names = feature_names
+
+        # Nb of seeds
         self.nb_seed = nb_seed
         
         # Prepare data
@@ -55,10 +64,19 @@ class NBTR_Stability:
         self.strengths = []
         self.ranks = []
 
+        return
+    
+
     def run_analysis(self):
+
         """
         Run the stability analysis. Log-loss is computed on test data, strengths and ranks on train data.
+
+        Returns
+        -------
+        None
         """
+
         # Get unique teams and their features
         unique_teams = self.train_df.drop_duplicates(subset=['HomeTeam'])
         cols_home = [f"{col}_Home" for col in self.feature_names]
@@ -98,9 +116,15 @@ class NBTR_Stability:
         self._analyze_correlations()
         self._analyze_ranks()
 
+
     def _analyze_losses(self):
+
         """
-        Analyze the log-losses.
+        Analyze the log-losses. Plot boxplot and print statistics.
+
+        Returns
+        -------
+        None
         """
         losses = np.array(self.losses)
         print(f"Log-loss stats: mean={losses.mean():.4f}, std={losses.std():.4f}, min={losses.min():.4f}, max={losses.max():.4f}")
@@ -112,10 +136,19 @@ class NBTR_Stability:
         plt.ylabel('BCE Loss')
         plt.show()
 
+        return
+    
+
     def _analyze_correlations(self):
+
         """
-        Analyze Spearman correlations between strengths.
+        Analyze Spearman correlations between strengths. Plot heatmap.
+
+        Returns
+        -------
+        None
         """
+
         n = len(self.strengths)
         corr_matrix = np.zeros((n, n))
         
@@ -132,10 +165,19 @@ class NBTR_Stability:
         plt.ylabel('Seed Index')
         plt.show()
 
+        return
+    
+
     def _analyze_ranks(self):
+
         """
-        Analyze rank stability.
+        Analyze rank stability. Print most and least stable teams and plot boxplots.
+
+        Returns
+        -------
+        None
         """
+
         ranks = np.array(self.ranks)  # shape (nb_seed, n_teams)
         
         mean_ranks = ranks.mean(axis=0)
@@ -168,3 +210,5 @@ class NBTR_Stability:
         
         plt.tight_layout()
         plt.show()
+
+        return

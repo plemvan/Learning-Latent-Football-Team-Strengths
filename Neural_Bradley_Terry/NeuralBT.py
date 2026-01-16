@@ -1,4 +1,4 @@
-#========== Neural Bradley-Terry Module ==========#
+#========== Module for Neural Bradley-Terry ==========#
 
 # Imports
 import torch
@@ -8,13 +8,33 @@ import pandas as pd
 import torch.nn as nn
 import torch.optim as optim
 
-#=================================================#
+#=====================================================#
 
-# Definition of the neural Bradley-Terry model
 
 class NeuralBradleyTerry(nn.Module):
+    """
+    Neural Bradley-Terry model for learning latent team strengths from match outcomes.
+    """
+
     def __init__(self, input_dim: int, hidden_dim: int = 16, lr: float = 0.01, seed: int = 42):
+
+        """
+        Initialize the Neural Bradley-Terry model.
+
+        Parameters
+        ----------
+        input_dim : int
+            Dimension of input features for each team.
+        hidden_dim : int. Default = 16.
+            Number of hidden units in the neural network.
+        lr : float. Default = 0.01.
+            Learning rate for the optimizer.
+        seed : int. Default = 42.
+            Random seed for reproducibility.
+        """
+
         super(NeuralBradleyTerry, self).__init__()
+
         # Fix random seed for reproducibility
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -27,11 +47,27 @@ class NeuralBradleyTerry(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.BCEWithLogitsLoss()
 
+
     def forward(self, x):
         return self.feature_extractor(x)
 
 
     def fit(self, X_home, X_away, y, epochs=500):
+
+        """
+        Train the Neural Bradley-Terry model.
+
+        Parameters
+        ----------
+        X_home : np.ndarray
+            Feature matrix for home teams.
+        X_away : np.ndarray
+            Feature matrix for away teams.
+        y : np.ndarray
+            Outcomes (1 if home team wins, 0.5 if draw, 0 otherwise).
+        epochs : int. Default = 500.
+            Number of training epochs.
+        """
 
         X_h = torch.FloatTensor(X_home)
         X_a = torch.FloatTensor(X_away)
@@ -45,7 +81,7 @@ class NeuralBradleyTerry(nn.Module):
 
         self.train()
 
-        for epoch in range(epochs):
+        for _ in range(epochs):
             for bh, ba, by in loader: 
                 optimizer.zero_grad()
                 score_h = self.forward(bh)
@@ -56,6 +92,23 @@ class NeuralBradleyTerry(nn.Module):
 
 
     def fit_seasons(self, X_home, X_away, y, seasons, epochs=300):
+
+        """
+        Train the Neural Bradley-Terry model with time-decayed weights based on seasons.
+
+        Parameters
+        ----------
+        X_home : np.ndarray
+            Feature matrix for home teams.
+        X_away : np.ndarray
+            Feature matrix for away teams.
+        y : np.ndarray
+            Outcomes (1 if home team wins, 0.5 if draw, 0 otherwise).
+        seasons : list of str
+            List of season identifiers corresponding to each match (e.g., '20-21', '21-22').
+        epochs : int. Default = 300.
+            Number of training epochs.
+        """
         
         seasons_arr = np.array([int(s.split('-')[0]) for s in seasons]) 
         min_year = seasons_arr.min()
@@ -76,7 +129,7 @@ class NeuralBradleyTerry(nn.Module):
         self.train()
         print("Training with time-decayed weights")
         
-        for epoch in range(epochs):
+        for _ in range(epochs):
             for bh, ba, by, bw in loader: # bw = batch weights
                 optimizer.zero_grad()
                 score_h = self.forward(bh)
@@ -87,10 +140,22 @@ class NeuralBradleyTerry(nn.Module):
                 optimizer.step()
     
 
-    def get_season_ranking(self, test_df : pd.DataFrame, feature_cols : list):
+    def get_season_ranking(self, test_df : pd.DataFrame, feature_cols : list) -> pd.DataFrame:
 
         """
         Generate team rankings for a specific season using the trained Neural Bradley-Terry model.
+
+        Parameters
+        -----------
+        test_df : pd.DataFrame
+            DataFrame containing match data for the season.
+        feature_cols : list
+            List of feature column names used for team representation.
+
+        Returns
+        --------
+        ranking : pd.DataFrame
+            DataFrame with teams and their corresponding neural strength scores, sorted in descending order.
         """
 
         unique_teams = test_df.drop_duplicates(subset=['HomeTeam'])
@@ -121,6 +186,22 @@ class NeuralBradleyTerry(nn.Module):
 
         """
         Generate match outcome probabilities for all team matchups in a specific season.
+
+        Parameters
+        -----------
+        test_df : pd.DataFrame
+            DataFrame containing match data for the season.
+        feature_cols : list
+            List of feature column names used for team representation.
+        draw_threshold : float. Default = 0.5.
+            Threshold on strength difference to consider a draw.
+        home_advantage : float. Default = 0.0.
+            Additional strength advantage for home teams.
+        
+        Returns
+        -------
+        df : pd.DataFrame
+            DataFrame with matchups and their predicted probabilities for home win, draw, and away win.
         """
 
         unique_teams = test_df.drop_duplicates(subset=['HomeTeam'])

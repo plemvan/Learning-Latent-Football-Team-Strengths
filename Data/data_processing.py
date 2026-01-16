@@ -155,13 +155,22 @@ class DataProcesser:
     def get_data_NBTR(self, feature_names : list) -> dict:
 
         """
-        Docstring for get_data_NBTR
+        Returns processed training data for NBTR model
+
+        Parameters
+        ----------
+        feature_names : list
+            List of feature column names (without _Home or _Away suffix)
         
-        :param self: Description
-        :param feature_names: Description
-        :type feature_names: list
-        :return: Description
-        :rtype: dict
+        Returns
+        -------
+        data : dict
+            Dictionary with keys:
+                'X_home' : np.array of shape (n_samples, n_features)
+                'X_away' : np.array of shape (n_samples, n_features)
+                'y' : np.array of shape (n_samples,)
+                'input_dim' : int, number of features
+                'seasons' : np.array of shape (n_samples,), seasons for each match
         """
 
         # Seasons used in training
