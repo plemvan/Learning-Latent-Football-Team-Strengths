@@ -57,7 +57,7 @@ The model's power lies in its input features $\mathbf{x}_i$, designed to disenta
 | **Tactical** | `Avg_Shots_Target` | Measures offensive creation independent of finishing variance. |
 | **Playstyle** | `Home_Dependency` | Captures teams that overperform at home but struggle away. |
 
-*Note: To prevent data leakage, all tactical features are $(N-1)$ priors (aggregates from the previous season).*
+*Note: To prevent data leakage, all tactical features are (N-1) priors (aggregates from the previous season).*
 
 ## Probabilistic Forecasting
 
